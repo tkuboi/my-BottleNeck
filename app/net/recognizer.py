@@ -11,7 +11,7 @@ from os import path
 
 #if __package__ is None:
 sys.path.append(path.dirname( path.abspath(__file__) ) )
-from siamese_model import SiameseModel
+from ann import SiameseModel
 NET_DIR = path.dirname(path.abspath(__file__))
 MODEL_FILE = '%s/models/model.h5' % (NET_DIR)
 CLASS_IMAGES_DIR = '%s/np_samples' % (NET_DIR)
