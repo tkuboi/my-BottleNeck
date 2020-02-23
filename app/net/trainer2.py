@@ -48,12 +48,12 @@ def read_images(dir_path, dimen, img_labels):
             for x in range(dimen):
                 sub_array = []
                 for y in range(dimen):
-                    sub_array.append(resized_image.load()[x, y])
+                    sub_array.append(resized_image.load()[x, y][:3])
                 arr.append(sub_array)
             image_data = np.array(arr)
             image_data = np.array(np.reshape(image_data, (dimen, dimen, 3))) / 255
+            labels.append(img_labels[item.lower()])
             images.append(image_data)
-            labels.append(img_labels[item])
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
