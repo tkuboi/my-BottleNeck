@@ -12,6 +12,7 @@ import json
 from tensorflow import keras
 from PIL import Image
 from ann import SiameseModel
+from crop_image import crop_image
 
 DIMENSION = 128
 
@@ -31,10 +32,11 @@ def create_label_dict(file_path):
             i += 1
     return filename_label
 
-def read_images(dir_path, dimen, img_labels):
+def read_images(dir_path, dim, img_labels):
     files = os.listdir( dir_path )
     images = [] 
     labels = []
+    count = 0
     for i, item in enumerate(files):
         file_path = os.path.join(dir_path , item)
         if os.path.isdir(file_path):
@@ -43,29 +45,34 @@ def read_images(dir_path, dimen, img_labels):
         #samples = []
         try:
             image = Image.open(file_path)
-            resized_image = image.resize((dimen, dimen))
+            image = crop_image(image)
+            resized_image = image.resize((dim, dim))
             arr = []
-            for x in range(dimen):
+            for x in range(dim):
                 sub_array = []
-                for y in range(dimen):
+                for y in range(dim):
                     sub_array.append(resized_image.load()[x, y][:3])
                 arr.append(sub_array)
             image_data = np.array(arr)
-            image_data = np.array(np.reshape(image_data, (dimen, dimen, 3))) / 255
+            image_data = np.array(np.reshape(image_data, (dim, dim, 3))) / 255
             labels.append(img_labels[item.lower()])
             images.append(image_data)
+            count += 1
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
+        if count >= 3000:
+            break
     return images, labels
 
-def train_model(model, parameters, dim, images, labels):
+def train_model(model, parameters, dim, images, labels, offset=0, step=10):
     samples = []
     samples_1 = []
     samples_2 = []
     truth_values = [] #1:True, 0:False
     length = len(images)
-    for i in range(length):
+    to = min(length, offset + step)
+    for i in range(offset, to):
         samples.append(images[i])
         for j in range(length):
             samples_1.append(images[i])
@@ -76,37 +83,50 @@ def train_model(model, parameters, dim, images, labels):
                 truth_values.append(0)
     X1 = np.array(samples_1) 
     X2 = np.array(samples_2)
-    samples = np.array(samples)
+    #samples = np.array(samples)
     X1 = X1.reshape((X1.shape[0], dim**2 * 3)).astype(np.float32)
     X2 = X2.reshape((X2.shape[0], dim**2 * 3)).astype(np.float32)
-    samples = samples.reshape((samples.shape[0], dim**2 * 3)).astype(np.float32)
+    #samples = samples.reshape((samples.shape[0], dim**2 * 3)).astype(np.float32)
     Y = np.array(truth_values)
     model.fit([X1, X2], Y, hyperparameters=parameters)
     return model, samples 
 
-def save_samples(samples, labels, dir_path):
-    np.save('{}/x.npy'.format(dir_path), samples)
-    with open('{}/labels.json'.format(dir_path), 'w') as json_file:
+def save_samples(samples, labels, dim, dir_path, batch_num=None):
+    samples = np.array(samples)
+    samples = samples.reshape((samples.shape[0], dim**2 * 3)).astype(np.float32)
+    if batch_num is None:
+        np.save('{}/x.npy'.format(dir_path), samples)
+    else:
+        np.save('{}/x_{}.npy'.format(dir_path, batch_num), samples)
+    json_filename = '{}/labels.json'.format(dir_path) if batch_num is None\
+        else '{}/labels_{}.json'.format(dir_path, batch_num)
+    with open(json_filename, 'w') as json_file:
         json.dump(labels, json_file)
 
 def main():
     if len(sys.argv) < 3:
-        print("usage trainer.py <in_dir> <out_dir> [<dimen>]")
+        print("usage trainer.py <in_dir> <out_dir> [<dim>]")
         exit()
     in_dir = sys.argv[1]
     out_dir = sys.argv[2]
     if len(sys.argv) > 3:
-        dimen = sys.argv[3]
+        dim = sys.argv[3]
     else:
-        dimen = DIMENSION
+        dim = DIMENSION
 
     img_labels = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    images, labels = read_images(in_dir, dimen, img_labels)
+    images, labels = read_images(in_dir, dim, img_labels)
+    save_samples(images, labels, dim, 'np_samples')
     print(labels)
-    parameters = {'batch_size':32, 'epochs':1, 'callbacks':None, 'val_data':None}
-    model, samples = train_model(SiameseModel(), parameters, dimen, images, labels)
+    parameters = {'batch_size':32, 'epochs':3, 'callbacks':None, 'val_data':None}
+    length = len(images)
+    print(length)
+    step = 10
+    _model = SiameseModel()
+    for i in range(0, length, step):
+        print("batch ", i)
+        model, samples = train_model(_model, parameters, dim, images, labels, i, step)
     model.save_model(out_dir + '/model.h5')
-    save_samples(samples, labels, 'np_samples')
 
 if __name__ == '__main__':
     main()
