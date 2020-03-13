@@ -9,21 +9,45 @@ def crop_image(image):
     Returns:
         Image: cropped image
     """
-    cropped = None
+    cropped = [] 
     width, height = image.size
-    bottom = 2 * height // 3
-    box = (0, bottom, width, height)
-    try:
-        cropped = image.crop(box)
-    except:
-        traceback.print_exc(file=sys.stdout)    
+    print(width, height)
+    ratio = float(240) / float(width)
+    print("ratio", ratio)
+    #width = width * ratio
+    width = 240
+    height = int(height * ratio)
+    print("height", height)
+    im = image.resize((width, height))
+    cropped.append(im)
+    h = 600
+    diff = (height - h) // 2 
+    for i in range(3):
+        upper = i * diff 
+        box = (0, upper, width, height - (2 * diff - upper))
+        try:
+            cropped.append(im.crop(box))
+        except:
+            traceback.print_exc(file=sys.stdout)    
     return cropped
+
+def rotate_image(image):
+    images = []
+    images.append(image)
+    images.append(image.rotate(90))
+    images.append(image.rotate(180))
+    images.append(image.rotate(270))
+    return images
 
 def main():
     filename = sys.argv[1]
+    pathname = filename.split("/")
+    parts = pathname[-1].split(".")
     im = Image.open(filename)
-    im = crop_image(im)
-    im.show()
+    images = crop_image(im)
+    for i, image in enumerate(images):
+        for j, x in enumerate(rotate_image(image)):
+            x.save("%s_%d_%d.%s" % (parts[0], i, j, parts[-1]))
 
 if __name__ == '__main__':
     main()

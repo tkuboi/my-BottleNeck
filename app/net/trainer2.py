@@ -45,25 +45,29 @@ def read_images(dir_path, dim, img_labels):
         #samples = []
         try:
             image = Image.open(file_path)
-            image = crop_image(image)
-            resized_image = image.resize((dim, dim))
-            arr = []
-            for x in range(dim):
-                sub_array = []
-                for y in range(dim):
-                    sub_array.append(resized_image.load()[x, y][:3])
-                arr.append(sub_array)
-            image_data = np.array(arr)
-            image_data = np.array(np.reshape(image_data, (dim, dim, 3))) / 255
-            labels.append(img_labels[item.lower()])
-            images.append(image_data)
+            cropped = crop_image(image)
+            resized_images = [image.resize((dim, dim)) for image in cropped]
+            for resized_image in resized_images:
+                #resized_image.save("cropped/new_" + item)
+                image_data = to_np(resized_image, dim)
+                labels.append(img_labels[item.lower()])
+                images.append(image_data)
             count += 1
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
-        if count >= 3000:
-            break
     return images, labels
+
+def to_np(image, dim):
+    arr = []
+    for x in range(dim):
+        sub_array = []
+        for y in range(dim):
+            sub_array.append(image.load()[x, y][:3])
+        arr.append(sub_array)
+    image_data = np.array(arr)
+    image_data = np.array(np.reshape(image_data, (dim, dim, 3))) / 255
+    return image_data 
 
 def train_model(model, parameters, dim, images, labels, offset=0, step=10):
     samples = []
@@ -116,16 +120,20 @@ def main():
 
     img_labels = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
     images, labels = read_images(in_dir, dim, img_labels)
+    for i, label in enumerate(labels):
+        if "J. Lohr" in label:
+            print(i, label)
+    images, labels = images[6600:7200], labels[6600:7200]
     save_samples(images, labels, dim, 'np_samples')
     print(labels)
-    parameters = {'batch_size':32, 'epochs':3, 'callbacks':None, 'val_data':None}
+    parameters = {'batch_size':32, 'epochs':1, 'callbacks':None, 'val_data':None}
     length = len(images)
     print(length)
-    step = 10
+    batch = 10
     _model = SiameseModel()
-    for i in range(0, length, step):
+    for i in range(0, length, batch):
         print("batch ", i)
-        model, samples = train_model(_model, parameters, dim, images, labels, i, step)
+        model, samples = train_model(_model, parameters, dim, images, labels, i, batch)
     model.save_model(out_dir + '/model.h5')
 
 if __name__ == '__main__':
