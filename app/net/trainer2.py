@@ -124,7 +124,7 @@ def main():
     for i, label in enumerate(labels):
         if "J. Lohr" in label:
             print(i, label)
-    images, labels = images[6600:7200], labels[6600:7200]
+    images, labels = images[3000:3200], labels[3000:3200]
     save_samples(images, labels, dim, 'np_samples')
     print(labels)
     parameters = {'batch_size':32, 'epochs':1, 'callbacks':None, 'val_data':None}
