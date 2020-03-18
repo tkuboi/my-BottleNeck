@@ -12,7 +12,7 @@ import json
 from tensorflow import keras
 from PIL import Image
 from ann import SiameseModel
-from image_utils import crop_image
+from image_utils import generte_cropped_images
 
 DIMENSION = 128
 
