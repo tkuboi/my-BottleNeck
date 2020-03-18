@@ -105,7 +105,7 @@ class SiameseModel:
     def process_image(self, path):
         image = Image.open(path)
         w, h = image.size
-        cropped = crop_image((0, h - w, w, h))
+        cropped = crop_image(image, (0, h - w, w, h))
         resized_image = cropped.resize((self.dim, self.dim))
         arr = []
         for x in range(self.dim):
