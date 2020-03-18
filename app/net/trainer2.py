@@ -12,7 +12,7 @@ import json
 from tensorflow import keras
 from PIL import Image
 from ann import SiameseModel
-from crop_image import crop_image
+from image_utils import crop_image
 
 DIMENSION = 128
 
@@ -37,6 +37,7 @@ def read_images(dir_path, dim, img_labels):
     images = [] 
     labels = []
     count = 0
+    box = (0, 320 - 240)
     for i, item in enumerate(files):
         file_path = os.path.join(dir_path , item)
         if os.path.isdir(file_path):
@@ -45,7 +46,7 @@ def read_images(dir_path, dim, img_labels):
         #samples = []
         try:
             image = Image.open(file_path)
-            cropped = crop_image(image)
+            cropped = generate_cropped_images(image, 240, 1)
             resized_images = [image.resize((dim, dim)) for image in cropped]
             for resized_image in resized_images:
                 #resized_image.save("cropped/new_" + item)

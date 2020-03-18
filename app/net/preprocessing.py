@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 from PIL import Image
-from image_utils import crop_image, paste_image, scale_image, generate_cropped_images
+from image_utils import crop_image, paste_image, scale_image, generate_cropped_images, remove_transparent
 
 DIMENSION = 128
 
@@ -32,7 +32,6 @@ def create_label_dict(file_path):
 def read_images(dir_path, out_dir, img_labels, bgfilename):
     background = Image.open(bgfilename)
     dim = background.size[1]
-    background.close()
     files = os.listdir( dir_path )
     labels = []
     count = 0
@@ -43,20 +42,28 @@ def read_images(dir_path, out_dir, img_labels, bgfilename):
         try:
             name_parts = item.split('.')
             image = Image.open(file_path)
-            for j, cropped in enumerate(generate_cropped_images(image, dim)):
-                background = Image.open(bgfilename)
-                pasted = paste_image(cropped, background)
-                name = "%s/%s_%d.%s" % (out_dir, name_parts[0], j, name_parts[1]) 
+            image = remove_transparent(image)
+            resized = scale_image(image, dim)
+            pasted = paste_image(resized, background)
+            name = "%s/%s" % (out_dir, item) 
+            pasted.save(name)
+            labels.append(img_labels[item.lower()])
+            count += 1
+            #for j, cropped in enumerate(generate_cropped_images(image, dim)):
+                #background = Image.open(bgfilename)
+                #pasted = paste_image(cropped, background)
+                #name = "%s/%s_%d.%s" % (out_dir, name_parts[0], j, name_parts[1]) 
                 #cropped.save(name)
-                pasted.save(name)
-                background.close()
-                labels.append(img_labels[item.lower()])
-                count += 1
+                #pasted.save(name)
+                #background.close()
+                #labels.append(img_labels[item.lower()])
+                #count += 1
             #if count >= 10:
             #    break
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
+    background.close()
     return count, labels
 
 def write_labels(labels, outfile):
