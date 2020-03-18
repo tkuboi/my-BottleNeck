@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 from PIL import Image
-from crop_image import crop_image
+from image_utils import crop_image, paste_image, scale_image, generate_cropped_images
 
 DIMENSION = 128
 
@@ -23,20 +23,16 @@ def create_label_dict(file_path):
                 items = line.split(',')
                 filename = items[-1].split('/')[-1]
                 filename = filename.replace('\n', '')
-                filename_label[filename] = "%s %s" % (items[2], items[3])
+                filename_label[filename.lower()] = items[:-1] + [filename] 
                 print(filename)
             line = csv.readline()
             i += 1
     return filename_label
 
-def paste_image(image):
-    w, h = image.size
-    box = ((450 - w) // 2, 0)
-    pasted = Image.open("resources/white_portlate.png")
-    pasted.paste(image, box)
-    return pasted
- 
-def read_images(dir_path, out_dir, img_labels):
+def read_images(dir_path, out_dir, img_labels, bgfilename):
+    background = Image.open(bgfilename)
+    dim = background.size[1]
+    background.close()
     files = os.listdir( dir_path )
     labels = []
     count = 0
@@ -45,13 +41,19 @@ def read_images(dir_path, out_dir, img_labels):
         if os.path.isdir(file_path):
             continue
         try:
+            name_parts = item.split('.')
             image = Image.open(file_path)
-            pasted = paste_image(image)
-            pasted.save("%s/" % (out_dir) + item)
-            cropped = crop_image(pasted)
-            labels.append(img_labels[item.lower()])
-            #resized_images = [image.resize((dim, dim)) for image in cropped]
-            count += 1
+            for j, cropped in enumerate(generate_cropped_images(image, dim)):
+                background = Image.open(bgfilename)
+                pasted = paste_image(cropped, background)
+                name = "%s/%s_%d.%s" % (out_dir, name_parts[0], j, name_parts[1]) 
+                #cropped.save(name)
+                pasted.save(name)
+                background.close()
+                labels.append(img_labels[item.lower()])
+                count += 1
+            #if count >= 10:
+            #    break
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
@@ -60,18 +62,19 @@ def read_images(dir_path, out_dir, img_labels):
 def write_labels(labels, outfile):
     with open(outfile, 'w') as of:
         for label in labels:
-            of.write("%s, %s, %s, %s\n" % (label))
+            of.write("%s, %s, %s, %s, %s\n" % (tuple(label)))
 
 def main():
-    if len(sys.argv) < 3:
-        print("usage trainer.py <in_dir> <out_dir> [<dim>]")
+    if len(sys.argv) < 4:
+        print("usage preprocessing.py <in_dir> <out_dir> <background_filename>")
         exit()
     in_dir = sys.argv[1]
     out_dir = sys.argv[2]
+    bgfilename = sys.argv[3]
 
     img_labels = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    count, labels = read_images(in_dir, out_dir, img_labels)
-    #write_labels(labels, "preprocessed/wineDataToImageFilename_2020_02_10.csv")
+    count, labels = read_images(in_dir, out_dir, img_labels, bgfilename)
+    write_labels(labels, out_dir + "/wineDataToImageFilename_2020_02_10.csv")
 
 if __name__ == '__main__':
     main()
