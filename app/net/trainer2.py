@@ -25,7 +25,7 @@ def create_label_dict(file_path):
             if i != 0:
                 items = line.split(',')
                 filename = items[-1].split('/')[-1]
-                filename = filename.replace('\n', '')
+                filename = filename.strip().replace('\n', '')
                 filename_label[filename] = "%s %s" % (items[2], items[3])
                 print(filename)
             line = csv.readline()
