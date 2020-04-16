@@ -8,7 +8,7 @@ from tensorflow.keras.layers import *
 import tensorflow.keras.backend as K
 from PIL import Image
 from tensorflow import keras
-from image_utils import crop_image
+from image_utils import crop_image, extract_filename
 
 class SiameseModel:
     def __init__(self, dim=128):
@@ -107,6 +107,7 @@ class SiameseModel:
         w, h = image.size
         cropped = crop_image(image, (0, h - w, w, h))
         resized_image = cropped.resize((self.dim, self.dim))
+        resized_image.save(extract_filename(path))
         arr = []
         for x in range(self.dim):
             sub_array = []

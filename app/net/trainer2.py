@@ -39,6 +39,8 @@ def read_images(dir_path, dim, img_labels):
     count = 0
     box = (0, 320 - 240)
     for i, item in enumerate(files):
+        if item[-5] == "0":
+            continue
         file_path = os.path.join(dir_path , item)
         if os.path.isdir(file_path):
             continue
@@ -124,13 +126,13 @@ def main():
     for i, label in enumerate(labels):
         if "J. Lohr" in label:
             print(i, label)
-    images, labels = images[3000:3200], labels[3000:3200]
+    images, labels = images[6500:6600], labels[6500:6600]
     save_samples(images, labels, dim, 'np_samples')
     print(labels)
-    parameters = {'batch_size':32, 'epochs':1, 'callbacks':None, 'val_data':None}
+    parameters = {'batch_size':32, 'epochs':20, 'callbacks':None, 'val_data':None}
     length = len(images)
     print(length)
-    batch = 10
+    batch = 64 
     _model = SiameseModel()
     for i in range(0, length, batch):
         print("batch ", i)

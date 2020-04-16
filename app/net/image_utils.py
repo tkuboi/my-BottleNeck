@@ -2,6 +2,10 @@ import sys
 import traceback
 from PIL import Image
 
+def extract_filename(path):
+    parts = path.split("/")
+    return parts[-1]
+
 def remove_transparent(image, val=0):
     width, height = image.size
     for w in range(width):
