@@ -25,6 +25,7 @@ import numpy as np
 
 import os
 import sys 
+import traceback
 
 from sklearn.decomposition import PCA
 
@@ -211,17 +212,18 @@ def create_base_network2(image_input_shape, embedding_size):
 
     #x = Flatten()(input_image)
     #x = Conv2D(64, kernel_size=(7, 7), strides=2, padding='same', activation='relu', kernel_regularizer=regularizers.l2(0.001))(input_image)
-    x = Conv2D(64, kernel_size=(5, 5), strides=2, padding='same', activation='relu' )(input_image)
+    x = Conv2D(64, kernel_size=(7, 7), strides=2, padding='same', activation='relu' )(input_image)
     x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 0)
-    x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
-    #x = Conv2D(128, kernel_size=(1, 1), strides=1, activation='relu')(x)
-    x1 = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x)
-    x = concatenate([x, x1], axis=3)
+    #x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
+    #inception 2
+    x = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
+    x = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x)
+    #x = concatenate([x, x1], axis=3)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 0)
-    x = MaxPooling2D(pool_size=(3, 3), strides=2)(x)
+    x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
 
     #3a
     x1 = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -330,11 +332,11 @@ def create_base_network2(image_input_shape, embedding_size):
     x = Dropout(0.2)(x)
 
 
-    #x = AveragePooling2D(pool_size=(7, 7), strides=1)(x)
-    x = AveragePooling2D(pool_size=(2, 2), strides=1)(x)
+    x = AveragePooling2D(pool_size=(7, 7), strides=1)(x)
+    #x = AveragePooling2D(pool_size=(2, 2), strides=1)(x)
     x = Flatten()(x)
-    x = Dense(128, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    #x = Dense(128, activation='relu')(x)
+    #x = Dropout(0.2)(x)
     x = Dense(embedding_size, activation='relu')(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 0)
@@ -352,8 +354,8 @@ def read_images(dir_path, filename, dim):
         for line in f.readlines():
             try:
                 tokens = line.split(', ')
-                if extract_imgnum(tokens[-1]) == 1:
-                    continue
+                #if extract_imgnum(tokens[-1]) == 1:
+                #    continue
                 image_path = os.path.join(dir_path, tokens[-1].replace('\n', ''))
                 if not os.path.exists(image_path):
                     continue
@@ -361,6 +363,7 @@ def read_images(dir_path, filename, dim):
                 image_data = to_np(image, dim)
                 images.append(image_data)
                 labels.append(int(tokens[0]))
+                print(int(tokens[0]), image_path)
                 count += 1
             except:
                 traceback.print_exc(file=sys.stdout)
@@ -369,14 +372,19 @@ def read_images(dir_path, filename, dim):
 
 def to_np(image, dim):
     arr = []
-    for x in range(dim):
+    w, h = image.size
+    for x in range(w):
         sub_array = []
-        for y in range(dim):
+        for y in range(h):
             sub_array.append(image.load()[x, y][:3])
         arr.append(sub_array)
     image_data = np.array(arr)
     image_data = np.array(np.reshape(image_data, (dim, dim, 3)))
     return image_data
+
+def np_save(x, y, dir_path):
+    np.save('{}/x.npy'.format(dir_path), x)
+    np.save('{}/y.npy'.format(dir_path), y)
 
 def extract_imgnum(filename):
     tokens = filename.split('.')
@@ -393,13 +401,13 @@ def shuffle(X,Y):
 if __name__ == "__main__":
     # in case this scriot is called from another file, let's make sure it doesn't start training the network...
 
-    dim = 128
-    batch_size = 256
-    epochs = 5 
+    dim = 224 
+    batch_size = 312 
+    epochs = 10 
     train_flag = True  # either     True or False
 
-    embedding_size = 64
-    #embedding_size = 128 
+    #embedding_size = 64
+    embedding_size = 128 
 
     no_of_components = 2  # for visualization -> PCA.fit_transform()
 
@@ -407,15 +415,21 @@ if __name__ == "__main__":
 
     # The data, split between train and test sets
     #(x_train, y_train), (x_test, y_test) = mnist.load_data()
-    (x_test, y_test) = read_images('testset', 'wineDataToImageFilename_2020_02_10.csv', dim)
+    #(x_test, y_test) = read_images('testset2', 'wineDataToImageFilename_2020_02_10.csv', dim)
+    #np_save(x_test, y_test, "np_test")
+    x_test = np.load("np_test/x.npy")
+    y_test = np.load("np_test/y.npy")
     print(x_test.shape)
     print(y_test.shape)
-    (x_train, y_train) = read_images('dataset3', 'wineDataToImageFilename_2020_02_10.csv', dim)
+    #(x_train, y_train) = read_images('dataset5', 'wineDataToImageFilename_2020_02_10.csv', dim)
+    #np_save(x_train, y_train, "np_train")
+    x_train = np.load("np_train/x.npy")[:400]
+    y_train = np.load("np_train/y.npy")[:400]
     shuffle(x_train, y_train)
     x_val = x_train[-100:,:,:]
     y_val = y_train[-100:]
-    x_train = x_train[:-100,:,:]
-    y_train = y_train[:-100]
+    #x_train = x_train[:-100,:,:]
+    #y_train = y_train[:-100]
     n_train = len(x_train)
     steps_per_epoch = n_train // batch_size
     print("x_val.shape", x_val.shape)
@@ -429,7 +443,7 @@ if __name__ == "__main__":
     x_val /= 255.
     x_test /= 255.
     #input_image_shape = (28, 28, 1)
-    input_image_shape = (128, 128, 3)
+    input_image_shape = (dim, dim, 3)
 
     # Network training...
     if train_flag == True:
@@ -457,8 +471,8 @@ if __name__ == "__main__":
         #opt = Adagrad(lr=0.00001)  # choose optimiser. RMS is good too!
         opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
 
-        model.compile(loss=triplet_loss_adapted_from_tf,
-                      optimizer=opt)
+        model.compile(loss=triplet_loss_adapted_from_tf, optimizer=opt)
+        #model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
 
         filepath = "semiH_trip_MNIST_v13_ep{epoch:02d}_BS%d.hdf5" % batch_size
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, period=25)

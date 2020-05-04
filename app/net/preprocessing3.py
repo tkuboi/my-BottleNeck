@@ -82,13 +82,11 @@ def create_labels(label, images):
         labels.append(label[:-1] + [filename % (nameparts[0], i, nameparts[1])])
     return labels
 
-def read_images2(dir_path, out_dir, img_labels, dim, num_wines):
+def read_images2(dir_path, out_dir, img_labels, dim):
     files = os.listdir( dir_path )
     labels = []
     count = 0
     for i, item in enumerate(files):
-        if count > num_wines:
-            break
         file_path = os.path.join(dir_path , item)
         if os.path.isdir(file_path):
             continue
@@ -183,17 +181,16 @@ def main():
         exit()
     in_dir = sys.argv[1]
     out_dir = sys.argv[2]
-    num_wines = int(sys.argv[3])
     #bgfilename = sys.argv[3]
-    #trainer_dir = sys.argv[3]
+    trainer_dir = sys.argv[3]
 
-    img_labels, id_wine_dict = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    #img_labels, id_wine_dict = create_label_dict(trainer_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    count, labels = read_images2(in_dir, out_dir, img_labels, DIMENSION, num_wines)
-    #count, labels = read_images3(in_dir, out_dir, id_wine_dict, DIMENSION)
-    #count_labels = add_trainer_images(labels, trainer_dir, out_dir, id_wine_dict)
-    #count += count_labels[0]
-    #labels += count_labels[1]
+    #img_labels, id_wine_dict = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
+    img_labels, id_wine_dict = create_label_dict(trainer_dir+'/wineDataToImageFilename_2020_02_10.csv')
+    #count, labels = read_images2(in_dir, out_dir, img_labels, DIMENSION)
+    count, labels = read_images3(in_dir, out_dir, id_wine_dict, DIMENSION)
+    count_labels = add_trainer_images(labels, trainer_dir, out_dir, id_wine_dict)
+    count += count_labels[0]
+    labels += count_labels[1]
     write_labels(labels, out_dir + "/wineDataToImageFilename_2020_02_10.csv")
 
 if __name__ == '__main__':
