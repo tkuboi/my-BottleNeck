@@ -3,6 +3,8 @@ import os
 import sys
 
 from PIL import Image
+from sklearn.decomposition import PCA
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -43,6 +45,61 @@ def _normalize_img(img, label):
     img = tf.cast(img, tf.float32) / 255.
     return (img, label)
 
+def create_model(dim):
+    model = tf.keras.Sequential([
+        tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same', activation='relu', input_shape=(dim,dim,3)),
+        tf.keras.layers.MaxPooling2D(pool_size=2),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Conv2D(filters=32, kernel_size=2, padding='same', activation='relu'),
+        tf.keras.layers.MaxPooling2D(pool_size=2),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(256, activation=None), # No activation on final dense layer
+        tf.keras.layers.Lambda(lambda x: tf.math.l2_normalize(x, axis=1)) # L2 normalize embeddings
+
+    ])
+
+    return model
+
+def plot_pca(testing_embeddings, x_test, y_test, x_embeddings_before_train,
+        no_of_components, epochs):
+    # Visualizing the effect of embeddings -> using PCA!
+    x_embeddings = testing_embeddings.predict(x_test)
+    step = 1
+    dict_embeddings = {}
+    dict_gray = {}
+    test_class_labels = np.unique(y_test)
+
+    pca = PCA(n_components=no_of_components)
+    decomposed_embeddings = pca.fit_transform(x_embeddings)
+#     x_test_reshaped = np.reshape(x_test, (len(x_test), 28 * 28))
+    decomposed_gray = pca.fit_transform(x_embeddings_before_train)
+
+    fig = plt.figure(figsize=(16, 8))
+    for label in test_class_labels:
+        decomposed_embeddings_class = decomposed_embeddings[y_test == label]
+        decomposed_gray_class = decomposed_gray[y_test == label]
+
+        plt.subplot(1,2,1)
+        plt.scatter(decomposed_gray_class[::step,1], decomposed_gray_class[::step,0],label=str(label))
+        plt.title('before training (embeddings)')
+        plt.legend()
+
+        plt.subplot(1,2,2)
+        plt.scatter(decomposed_embeddings_class[::step, 1], decomposed_embeddings_class[::step, 0], label=str(label))
+        plt.title('after @%d epochs' % epochs)
+        plt.legend()
+
+    #plt.show()
+    fig.savefig('embeddings.png', bbox_inches='tight')
+
+def transfer_weights(model, testing_embeddings):
+    # Grabbing the weights from the trained network
+    for layer_target, layer_source in zip(testing_embeddings.layers, model.layers):
+        weights = layer_source.get_weights()
+        layer_target.set_weights(weights)
+        del weights
+
 #train_dataset, test_dataset = tfds.load(name="mnist", split=['train', 'test'], as_supervised=True)
 #print(train_dataset)
 
@@ -53,6 +110,11 @@ def _normalize_img(img, label):
 #test_dataset = test_dataset.batch(32)
 #test_dataset = test_dataset.map(_normalize_img)
 dim = 224
+input_image_shape = (dim, dim, 3)
+embedding_size = 256 
+no_of_components = 2  # for visualization -> PCA.fit_transform()
+epochs = 3
+
 #(x_test, y_test) = read_images('testset', 'wineDataToImageFilename_2020_02_10.csv', dim)
 x_test = np.load("np_test/x.npy") 
 y_test = np.load("np_test/y.npy") 
@@ -84,19 +146,7 @@ x_test /= 255.
 train_dataset = (x_train, y_train)
 test_dataset = (x_val, y_val)
 
-model = tf.keras.Sequential([
-    tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same', activation='relu', input_shape=(dim,dim,3)),
-    tf.keras.layers.MaxPooling2D(pool_size=2),
-    tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Conv2D(filters=32, kernel_size=2, padding='same', activation='relu'),
-    tf.keras.layers.MaxPooling2D(pool_size=2),
-    tf.keras.layers.Dropout(0.3),
-    tf.keras.layers.Flatten(),
-    tf.keras.layers.Dense(256, activation=None), # No activation on final dense layer
-    tf.keras.layers.Lambda(lambda x: tf.math.l2_normalize(x, axis=1)) # L2 normalize embeddings
-
-])
-
+model = create_model(dim)
 # Compile the model
 model.compile(
     optimizer=tf.keras.optimizers.Adam(0.0001),
@@ -107,7 +157,8 @@ history = model.fit(
     x_train,
     y_train,
     batch_size=100,
-    epochs=50)
+    epochs=epochs,
+    validation_data=(x_val, y_val))
 
 fig = plt.figure(figsize=(8,8))
 plt.plot(history.history['loss'], label='training loss')
@@ -118,10 +169,18 @@ plt.show()
 fig.savefig('train_val_loss.png', bbox_inches='tight')
 
 # Evaluate the network
-results = model.predict(test_dataset)
+results = model.predict(x_test)
 
 # Save test embeddings for visualization in projector
 np.savetxt("vecs.tsv", results, delimiter='\t')
+
+# Test the network
+# creating an empty network
+testing_embeddings = create_model(dim)
+x_embeddings_before_train = testing_embeddings.predict(x_test)
+transfer_weights(model, testing_embeddings)
+plot_pca(testing_embeddings, x_test, y_test, x_embeddings_before_train,
+         no_of_components, epochs)
 
 #out_m = io.open('meta.tsv', 'w', encoding='utf-8')
 #for img, labels in tfds.as_numpy(test_dataset):
