@@ -4,9 +4,10 @@ import sys
 
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
 
 import tensorflow as tf
-import tensorflow_datasets as tfds
+#import tensorflow_datasets as tfds
 import tensorflow_addons as tfa
 
 def shuffle(X,Y):
@@ -106,7 +107,15 @@ history = model.fit(
     x_train,
     y_train,
     batch_size=100,
-    epochs=30)
+    epochs=50)
+
+fig = plt.figure(figsize=(8,8))
+plt.plot(history.history['loss'], label='training loss')
+plt.plot(history.history['val_loss'], label='validation loss')
+plt.legend()
+plt.title('Train/validation loss')
+plt.show()
+fig.savefig('train_val_loss.png', bbox_inches='tight')
 
 # Evaluate the network
 results = model.predict(test_dataset)
@@ -114,10 +123,10 @@ results = model.predict(test_dataset)
 # Save test embeddings for visualization in projector
 np.savetxt("vecs.tsv", results, delimiter='\t')
 
-out_m = io.open('meta.tsv', 'w', encoding='utf-8')
-for img, labels in tfds.as_numpy(test_dataset):
-    [out_m.write(str(x) + "\n") for x in labels]
-out_m.close()
+#out_m = io.open('meta.tsv', 'w', encoding='utf-8')
+#for img, labels in tfds.as_numpy(test_dataset):
+#    [out_m.write(str(x) + "\n") for x in labels]
+#out_m.close()
 
 
 #try:

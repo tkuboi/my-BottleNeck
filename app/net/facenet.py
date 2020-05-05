@@ -175,7 +175,8 @@ def triplet_loss_adapted_from_tf(y_true, y_pred):
 
     # In lifted-struct, the authors multiply 0.5 for upper triangular
     #   in semihard, they take all positive pairs except the diagonal.
-    num_positives = math_ops.maximum(1.0, math_ops.reduce_sum(mask_positives))
+    #num_positives = math_ops.maximum(1.0, math_ops.reduce_sum(mask_positives))
+    num_positives = math_ops.reduce_sum(mask_positives)
 
     semi_hard_triplet_loss_distance = math_ops.truediv(
         math_ops.reduce_sum(
@@ -402,8 +403,8 @@ if __name__ == "__main__":
     # in case this scriot is called from another file, let's make sure it doesn't start training the network...
 
     dim = 224 
-    batch_size = 312 
-    epochs = 10 
+    batch_size = 100 
+    epochs = 50 
     train_flag = True  # either     True or False
 
     #embedding_size = 64
@@ -462,7 +463,7 @@ if __name__ == "__main__":
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
-                          0.0001,
+                          0.00001,
                           decay_steps=steps_per_epoch*1000,
                           decay_rate=1,
                           staircase=False)
@@ -495,12 +496,13 @@ if __name__ == "__main__":
             validation_data=([x_val, y_val], dummy_gt_val),
             callbacks=callbacks_list)
 
-        plt.figure(figsize=(8,8))
+        fig = plt.figure(figsize=(8,8))
         plt.plot(H.history['loss'], label='training loss')
         plt.plot(H.history['val_loss'], label='validation loss')
         plt.legend()
         plt.title('Train/validation loss')
         plt.show()
+        fig.savefig('train_val_loss.png', bbox_inches='tight')
     else:
 
         #####
@@ -544,5 +546,6 @@ if __name__ == "__main__":
         plt.title('after @%d epochs' % epochs)
         plt.legend()
 
-    plt.show()
+    #plt.show()
+    fig.savefig('embeddings.png', bbox_inches='tight')
 
