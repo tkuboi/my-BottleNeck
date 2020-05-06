@@ -338,7 +338,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x = Flatten()(x)
     #x = Dense(128, activation='relu')(x)
     #x = Dropout(0.2)(x)
-    x = Dense(embedding_size, activation='relu')(x)
+    x = Dense(embedding_size, activation=None)(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 0)
 

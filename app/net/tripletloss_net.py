@@ -45,7 +45,7 @@ def _normalize_img(img, label):
     img = tf.cast(img, tf.float32) / 255.
     return (img, label)
 
-def create_model(dim):
+def create_model(dim, embedding_size):
     model = tf.keras.Sequential([
         tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same', activation='relu', input_shape=(dim,dim,3)),
         tf.keras.layers.MaxPooling2D(pool_size=2),
@@ -54,7 +54,7 @@ def create_model(dim):
         tf.keras.layers.MaxPooling2D(pool_size=2),
         tf.keras.layers.Dropout(0.3),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(256, activation=None), # No activation on final dense layer
+        tf.keras.layers.Dense(embedding_size, activation=None), # No activation on final dense layer
         tf.keras.layers.Lambda(lambda x: tf.math.l2_normalize(x, axis=1)) # L2 normalize embeddings
 
     ])
@@ -111,25 +111,24 @@ def transfer_weights(model, testing_embeddings):
 #test_dataset = test_dataset.map(_normalize_img)
 dim = 224
 input_image_shape = (dim, dim, 3)
-embedding_size = 256 
+embedding_size = 128 
 no_of_components = 2  # for visualization -> PCA.fit_transform()
-epochs = 3
+epochs = 20 
+dir_path = "dataset6"
 
 #(x_test, y_test) = read_images('testset', 'wineDataToImageFilename_2020_02_10.csv', dim)
-x_test = np.load("np_test/x.npy") 
-y_test = np.load("np_test/y.npy") 
+x_test = np.load("%s/test/x.npy" % dir_path) 
+y_test = np.load("%s/test/y.npy" % dir_path) 
 print(x_test.shape)
 print(y_test.shape)
+shuffle(x_test, y_test)
 #(x_train, y_train) = read_images('dataset4', 'wineDataToImageFilename_2020_02_10.csv', dim)
-x_train = np.load("np_train/x.npy") 
-y_train = np.load("np_train/y.npy")
-x_train = x_train[:400]
-y_train = y_train[:400]
+x_train = np.load("%s/train/x.npy" % dir_path) 
+y_train = np.load("%s/train/y.npy" % dir_path)
 shuffle(x_train, y_train)
-x_val = x_train[-10:,:,:]
-y_val = y_train[-10:]
-#x_train = x_train[:-10,:,:]
-#y_train = y_train[:-10]
+x_val = np.load("%s/validation/x.npy" % dir_path) 
+y_val = np.load("%s/validation/y.npy" % dir_path)
+shuffle(x_val, y_val)
 n_train = len(x_train)
 #steps_per_epoch = n_train // batch_size
 print("x_val.shape", x_val.shape)
@@ -146,7 +145,7 @@ x_test /= 255.
 train_dataset = (x_train, y_train)
 test_dataset = (x_val, y_val)
 
-model = create_model(dim)
+model = create_model(dim, embedding_size)
 # Compile the model
 model.compile(
     optimizer=tf.keras.optimizers.Adam(0.0001),
@@ -156,9 +155,9 @@ model.compile(
 history = model.fit(
     x_train,
     y_train,
-    batch_size=100,
     epochs=epochs,
-    validation_data=(x_val, y_val))
+    batch_size=100,
+    validation_data=(x_train, y_train))
 
 fig = plt.figure(figsize=(8,8))
 plt.plot(history.history['loss'], label='training loss')
@@ -176,7 +175,7 @@ np.savetxt("vecs.tsv", results, delimiter='\t')
 
 # Test the network
 # creating an empty network
-testing_embeddings = create_model(dim)
+testing_embeddings = create_model(dim, embedding_size)
 x_embeddings_before_train = testing_embeddings.predict(x_test)
 transfer_weights(model, testing_embeddings)
 plot_pca(testing_embeddings, x_test, y_test, x_embeddings_before_train,
