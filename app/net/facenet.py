@@ -129,8 +129,8 @@ def triplet_loss_adapted_from_tf(y_true, y_pred):
     # labels = tf.reshape(labels, [lshape[0], 1])
 
     # Build pairwise squared distance matrix.
-    #pdist_matrix = pairwise_distance(embeddings, squared=False)
-    pdist_matrix = tfa.losses.metric_learning.pairwise_distance(embeddings)
+    pdist_matrix = pairwise_distance(embeddings, squared=False)
+    #pdist_matrix = tfa.losses.metric_learning.pairwise_distance(embeddings)
     # Build pairwise binary adjacency matrix.
     adjacency = math_ops.equal(labels, tf.transpose(labels))
     # Invert so we can select negatives only.
@@ -216,14 +216,14 @@ def create_base_network2(image_input_shape, embedding_size):
     x = Conv2D(64, kernel_size=(7, 7), strides=2, padding='same', activation='relu' )(input_image)
     x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
-    x = l2_normalize(x, 0)
+    x = l2_normalize(x, 1)
     #x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
     #inception 2
     x = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x)
     #x = concatenate([x, x1], axis=3)
     #x = LayerNormalization(epsilon=1e-6)(x)
-    x = l2_normalize(x, 0)
+    x = l2_normalize(x, 1)
     x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
 
     #3a
@@ -243,7 +243,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(128, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -263,7 +263,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -274,7 +274,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(224, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -285,7 +285,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(256, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -296,7 +296,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(288, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -316,7 +316,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x2 = Conv2D(384, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
     x3 = Conv2D(48, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
     x3 = Conv2D(128, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 0) 
+    x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
     x = Dropout(0.2)(x)
@@ -340,7 +340,7 @@ def create_base_network2(image_input_shape, embedding_size):
     #x = Dropout(0.2)(x)
     x = Dense(embedding_size, activation=None)(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
-    x = l2_normalize(x, 0)
+    x = l2_normalize(x, 1)
 
     base_network = Model(inputs=input_image, outputs=x)
     plot_model(base_network, to_file='base_network.png', show_shapes=True, show_layer_names=True)
@@ -418,19 +418,24 @@ if __name__ == "__main__":
     #(x_train, y_train), (x_test, y_test) = mnist.load_data()
     #(x_test, y_test) = read_images('testset2', 'wineDataToImageFilename_2020_02_10.csv', dim)
     #np_save(x_test, y_test, "np_test")
-    x_test = np.load("np_test/x.npy")
-    y_test = np.load("np_test/y.npy")
+    x_test = np.load("dataset6/test/x.npy")
+    y_test = np.load("dataset6/test/y.npy")
     print(x_test.shape)
     print(y_test.shape)
     #(x_train, y_train) = read_images('dataset5', 'wineDataToImageFilename_2020_02_10.csv', dim)
     #np_save(x_train, y_train, "np_train")
-    x_train = np.load("np_train/x.npy")[:400]
-    y_train = np.load("np_train/y.npy")[:400]
+    #x_train = np.load("np_train/x.npy")[:400]
+    #y_train = np.load("np_train/y.npy")[:400]
+    x_train = np.load("dataset6/train/x.npy")
+    y_train = np.load("dataset6/train/y.npy")
     shuffle(x_train, y_train)
-    x_val = x_train[-100:,:,:]
-    y_val = y_train[-100:]
+    #x_val = x_train[-100:,:,:]
+    #y_val = y_train[-100:]
     #x_train = x_train[:-100,:,:]
     #y_train = y_train[:-100]
+    x_val = np.load("dataset6/validation/x.npy")
+    y_val = np.load("dataset6/validation/y.npy")
+    shuffle(x_val, y_val)
     n_train = len(x_train)
     steps_per_epoch = n_train // batch_size
     print("x_val.shape", x_val.shape)
@@ -456,24 +461,25 @@ if __name__ == "__main__":
         labels_plus_embeddings = concatenate([input_labels, embeddings])  # concatenating the labels + embeddings
 
         # Defining a model with inputs (images, labels) and outputs (labels_plus_embeddings)
-        model = Model(inputs=[input_images, input_labels],
-                      outputs=labels_plus_embeddings)
+        #model = Model(inputs=[input_images, input_labels],
+        #              outputs=labels_plus_embeddings)
+        model = base_network 
 
         model.summary()
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
-                          0.00001,
+                          0.005,
                           decay_steps=steps_per_epoch*1000,
                           decay_rate=1,
                           staircase=False)
         # train session
-        #opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
+        opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr=0.00001)  # choose optimiser. RMS is good too!
-        opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
+        #opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
 
-        model.compile(loss=triplet_loss_adapted_from_tf, optimizer=opt)
-        #model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
+        #model.compile(loss=triplet_loss_adapted_from_tf, optimizer=opt)
+        model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
 
         filepath = "semiH_trip_MNIST_v13_ep{epoch:02d}_BS%d.hdf5" % batch_size
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=False, period=25)
@@ -488,13 +494,19 @@ if __name__ == "__main__":
 
         print(x_train.shape)
         print(x_val.shape)
-        H = model.fit(
+        """H = model.fit(
             x=[x_train,y_train],
             y=dummy_gt_train,
             batch_size=batch_size,
             epochs=epochs,
             validation_data=([x_val, y_val], dummy_gt_val),
-            callbacks=callbacks_list)
+            callbacks=callbacks_list)"""
+        H = model.fit(
+            x=x_train,
+            y=y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            validation_data=(x_val, y_val))
 
         fig = plt.figure(figsize=(8,8))
         plt.plot(H.history['loss'], label='training loss')
