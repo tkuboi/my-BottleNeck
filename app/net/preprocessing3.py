@@ -160,7 +160,7 @@ def add_trainer_images(bottles, in_dir, out_dir, id_wine_dict):
         file_ext = filename.split('.')
         nameparts = file_ext[0].split('_')
         basename = "_".join(nameparts[:-1])
-        for i in range(1, 3):
+        for i in range(4):
             img_name = "%s_%d.%s" % (basename, i, file_ext[-1])
             in_name = "%s/%s" % (in_dir, img_name)
             image = Image.open(in_name)
