@@ -11,7 +11,7 @@ import traceback
 from PIL import Image
 from image_utils import rotate_image, crop_image, paste_image, scale_image, generate_cropped_images, remove_transparent
 
-DIMENSION = 224 
+DIMENSION = (240, 320) 
 
 def save_images(images, out_dir, name):
     filepath = "%s/%s_%d.%s"
@@ -37,10 +37,8 @@ def create_label_dict(file_path):
             i += 1
     return filename_label, id_wine_dict
 
-def read_images(dir_path, out_dir, img_labels, bgfilename):
-    background = Image.open(bgfilename)
-    dim = background.size[1]
-    files = os.listdir( dir_path )
+def read_images(dir_path, out_dir, img_labels, bgfiles, dim):
+    files = os.listdir(dir_path)
     labels = []
     count = 0
     for i, item in enumerate(files):
@@ -51,28 +49,51 @@ def read_images(dir_path, out_dir, img_labels, bgfilename):
             name_parts = item.split('.')
             image = Image.open(file_path)
             image = remove_transparent(image)
-            resized = scale_image(image, dim)
-            pasted = paste_image(resized, background)
-            name = "%s/%s" % (out_dir, item) 
-            pasted.save(name)
-            labels.append(img_labels[item.lower()])
-            count += 1
-            #for j, cropped in enumerate(generate_cropped_images(image, dim)):
-                #background = Image.open(bgfilename)
-                #pasted = paste_image(cropped, background)
-                #name = "%s/%s_%d.%s" % (out_dir, name_parts[0], j, name_parts[1]) 
-                #cropped.save(name)
-                #pasted.save(name)
-                #background.close()
-                #labels.append(img_labels[item.lower()])
-                #count += 1
-            #if count >= 10:
-            #    break
+            if image.size[0] > image.size[1]:
+                image = image.rotate(90)
+            resized = scale_image(image, int(dim[1] * 1.20))
+            w, h = resized.size
+            box = (0, abs(h - dim[1]), w, h)
+            cropped = crop_image(resized, box)
+            pasteds = []
+            name_ext = item.split(".")
+            for background in bgfiles:
+                for p in range((background.size[0] - cropped.size[0]) // 2 + 1):
+                    box = (p, 0)
+                    pasted = paste_image(cropped, background)
+                    name = "%s_%d.%s" % (name_ext[0], p, name_ext[1])
+                    pathname = "%s/%s" % (out_dir, name)
+                    pasted.save(pathname)
+                    pasteds.append(pasted)
+                    labels.append(img_labels[item.lower()][:-1] + [name])
+                    count += 1
         except:
             traceback.print_exc(file=sys.stdout)
             print('WARNING : File {} could not be processed.'.format(file_path))
-    background.close()
     return count, labels
+
+def get_bgfiles(dir_path):
+    images = []
+    files = os.listdir(dir_path)
+    for i, item in enumerate(files):
+        file_path = os.path.join(dir_path , item)
+        if os.path.isdir(file_path):
+            continue
+        try:
+            image = Image.open(file_path)
+            images.append(image)
+        except:
+            traceback.print_exc(file=sys.stdout)
+            print('WARNING : File {} could not be processed.'.format(file_path))
+    return images
+
+def close_images(images):
+    for image in images:
+        try:
+            image.close()
+        except:
+            traceback.print_exc(file=sys.stdout)
+            print('WARNING : File {} could not be processed.'.format(image.filename))
 
 def create_labels(label, images):
     labels = []
@@ -81,96 +102,6 @@ def create_labels(label, images):
     for i,im in enumerate(images):
         labels.append(label[:-1] + [filename % (nameparts[0], i, nameparts[1])])
     return labels
-
-def read_images2(dir_path, out_dir, img_labels, dim, num_wines):
-    files = os.listdir( dir_path )
-    labels = []
-    count = 0
-    for i, item in enumerate(files):
-        if count > num_wines:
-            break
-        file_path = os.path.join(dir_path , item)
-        if os.path.isdir(file_path):
-            continue
-        try:
-            name_parts = item.split('.')
-            if name_parts[-2][-1] == '0':
-                continue
-            image = Image.open(file_path)
-            width, height = image.size
-            upper = (height - width) // 2
-            box = (0, upper, width, upper + width)
-            cropped = crop_image(image, box)
-            resized = cropped.resize((dim, dim))
-            rotated = rotate_image(resized)
-            save_images(rotated, out_dir, item)
-            labels += create_labels(img_labels[item.lower()], rotated)
-            count += 1
-        except:
-            traceback.print_exc(file=sys.stdout)
-            print('WARNING : File {} could not be processed.'.format(file_path))
-    return count, labels
-
-def read_images3(dir_path, out_dir, id_wine_dict, dim, _id=None):
-    files = os.listdir(dir_path)
-    labels = []
-    count = 0
-    for i, item in enumerate(files):
-        file_path = os.path.join(dir_path , item)
-        print(file_path)
-        if os.path.isdir(file_path):
-            filename_ext = item.split('.')
-            filename_parts = item.split('_')
-            _id = int(filename_parts[0])
-            count_labels = read_images3(file_path, out_dir, id_wine_dict, dim, _id)
-            count += count_labels[0]
-            labels.extend(count_labels[1])
-            continue
-        try:
-            filename_ext = item.split('.')
-            filename_parts = item.split('_')
-            image = Image.open(file_path)
-            width, height = image.size
-            label = id_wine_dict[_id]
-            croppeds = generate_cropped_images(image, width, 1)
-            rotated = []
-            for c in croppeds:
-                rotated += rotate_image(c)
-            croppeds = croppeds + rotated
-            for j, cropped in enumerate(croppeds):
-                name = "%s_%d.%s" % (filename_ext[0], j+1, filename_ext[1]) 
-                resized = cropped.resize((dim, dim))
-                resized.save("%s/%s" % (out_dir, name))
-                labels.append(label[:-1] + [name])
-                count += 1
-        except:
-            traceback.print_exc(file=sys.stdout)
-            print('WARNING : File {} could not be processed.'.format(file_path))
-    return count, labels
-
-def add_trainer_images(bottles, in_dir, out_dir, id_wine_dict):
-    count = 0
-    labels = []
-    processed = {}
-    for bottle in bottles:
-        _id = int(bottle[0])
-        if _id in processed:
-            continue
-        processed[_id] = True
-        wine = id_wine_dict[_id]
-        filename = wine[-1]
-        file_ext = filename.split('.')
-        nameparts = file_ext[0].split('_')
-        basename = "_".join(nameparts[:-1])
-        for i in range(1, 3):
-            img_name = "%s_%d.%s" % (basename, i, file_ext[-1])
-            in_name = "%s/%s" % (in_dir, img_name)
-            image = Image.open(in_name)
-            out_name = "%s/%s" % (out_dir, img_name)
-            image.save(out_name)
-            labels.append(wine[:-1] + [img_name])
-            count += 1
-    return count, labels
 
 def write_labels(labels, outfile):
     with open(outfile, 'w') as of:
@@ -183,18 +114,13 @@ def main():
         exit()
     in_dir = sys.argv[1]
     out_dir = sys.argv[2]
-    num_wines = int(sys.argv[3])
-    #bgfilename = sys.argv[3]
-    #trainer_dir = sys.argv[3]
+    bgfile_dir = sys.argv[3]
 
+    bgfiles = get_bgfiles(bgfile_dir)
     img_labels, id_wine_dict = create_label_dict(in_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    #img_labels, id_wine_dict = create_label_dict(trainer_dir+'/wineDataToImageFilename_2020_02_10.csv')
-    count, labels = read_images2(in_dir, out_dir, img_labels, DIMENSION, num_wines)
-    #count, labels = read_images3(in_dir, out_dir, id_wine_dict, DIMENSION)
-    #count_labels = add_trainer_images(labels, trainer_dir, out_dir, id_wine_dict)
-    #count += count_labels[0]
-    #labels += count_labels[1]
+    count, labels = read_images(in_dir, out_dir, img_labels, bgfiles, DIMENSION)
     write_labels(labels, out_dir + "/wineDataToImageFilename_2020_02_10.csv")
+    close_images(bgfiles)
 
 if __name__ == '__main__':
     main()

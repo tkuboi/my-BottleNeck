@@ -11,7 +11,7 @@ def remove_transparent(image, val=0):
     for w in range(width):
         for h in range(height):
             pix = image.getpixel((w, h))
-            if pix[3] < 1:
+            if len(pix) > 3 and pix[3] < 1:
                 image.putpixel((w, h), (255, 255, 255, 1))
     return image
 
@@ -63,12 +63,13 @@ def generate_cropped_images(image, dim, offset=0):
     image.close()
     return cropped
 
-def paste_image(image, background):
+def paste_image(image, background, box=None):
     base = background.copy()
     w, h = image.size
     #print("image.size",image.size)
     #print("base.size",base.size)
-    box = ((base.size[0] - w) // 2, 0)
+    if box is None:
+        box = ((base.size[0] - w) // 2, 0)
     #print(box)
     base.paste(image, box)
     return base 
