@@ -156,7 +156,7 @@ history = model.fit(
     x_train,
     y_train,
     epochs=epochs,
-    batch_size=100,
+    batch_size=32,
     validation_data=(x_train, y_train))
 
 fig = plt.figure(figsize=(8,8))
