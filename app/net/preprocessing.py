@@ -58,7 +58,7 @@ def read_images(dir_path, out_dir, img_labels, bgfiles, dim):
             pasteds = []
             name_ext = item.split(".")
             for background in bgfiles:
-                for p in range((background.size[0] - cropped.size[0]) // 2 + 1):
+                for p in range(0,(background.size[0] - cropped.size[0]) // 2 + 1, 4):
                     box = (p, 0)
                     pasted = paste_image(cropped, background)
                     name = "%s_%d.%s" % (name_ext[0], p, name_ext[1])
@@ -110,7 +110,7 @@ def write_labels(labels, outfile):
 
 def main():
     if len(sys.argv) < 4:
-        print("usage preprocessing.py <in_dir> <out_dir> <background_filename>")
+        print("usage preprocessing.py <in_dir> <out_dir> <bg_img_dir>")
         exit()
     in_dir = sys.argv[1]
     out_dir = sys.argv[2]

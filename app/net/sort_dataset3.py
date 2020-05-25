@@ -9,22 +9,26 @@ DIMENSION = (240, 320)
 
 def import_images(filepath, dim):
     dir_path = "/".join(filepath.split("/")[:-1])
-    dataset = {"train":{"x":[], "y":[]}, "test":{"x":[], "y":[]}, "validation":{"x":[], "y":[]}}
     data = {} 
     labels = {}
     with open(filepath) as fi:
         lines = fi.readlines()
-
+    
+    count = 0
     for line in lines:
         tokens = line.split(",")
         wine = ", ".join(tokens[2:4])
         _id, imagefile = int(tokens[0]), tokens[-1].strip().replace("\n", "")
         if _id not in data:
             data[_id] = []
+            count = 0
+        if count > 29: 
+            continue 
         img = Image.open(os.path.join(dir_path, imagefile))
         data[_id].append(to_np(img, dim))
-        labels[_id] = wine 
-
+        labels[_id] = wine
+        img.close()
+        count += 1
     return data, labels
 
 def create_dataset(data_dict, batch, epoch):
@@ -77,8 +81,10 @@ def main():
     batch = int(sys.argv[3])
     epoch = int(sys.argv[4])
     data_dict, label_dict = import_images(in_filepath, DIMENSION)
-    pickle.dump(label_dict, "%s/label_dict.pkl" % (out_dir))
+    pickle.dump(label_dict, open("%s/label_dict.pkl" % (out_dir), 'wb'))
+    del label_dict
     dataset = create_dataset(data_dict, batch, epoch)
+    del data_dict
     np_save(dataset["train"]['x'], dataset["train"]['y'], "%s/train" % (out_dir))
     np_save(dataset["validation"]['x'], dataset["validation"]['y'], "%s/validation" % (out_dir))
     
