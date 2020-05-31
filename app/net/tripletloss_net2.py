@@ -5,6 +5,8 @@ import sys
 from PIL import Image
 from sklearn.decomposition import PCA
 
+from tensorflow.keras.callbacks import ModelCheckpoint
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -113,22 +115,24 @@ dim = (240, 320)
 input_image_shape = (dim[0], dim[1], 3)
 embedding_size = 128 
 no_of_components = 2  # for visualization -> PCA.fit_transform()
+batch_size=64
 epochs = 20 
 dir_path = sys.argv[1] 
+test_dir_path = sys.argv[2] 
 
 #(x_test, y_test) = read_images('testset', 'wineDataToImageFilename_2020_02_10.csv', dim)
-x_test = np.load("%s/test/x.npy" % dir_path) 
-y_test = np.load("%s/test/y.npy" % dir_path) 
+x_test = np.load("%s/test/x.npy" % test_dir_path) 
+y_test = np.load("%s/test/y.npy" % test_dir_path) 
 print(x_test.shape)
 print(y_test.shape)
-shuffle(x_test, y_test)
+#shuffle(x_test, y_test)
 #(x_train, y_train) = read_images('dataset4', 'wineDataToImageFilename_2020_02_10.csv', dim)
 x_train = np.load("%s/train/x.npy" % dir_path) 
 y_train = np.load("%s/train/y.npy" % dir_path)
-shuffle(x_train, y_train)
+#shuffle(x_train, y_train)
 x_val = np.load("%s/validation/x.npy" % dir_path) 
 y_val = np.load("%s/validation/y.npy" % dir_path)
-shuffle(x_val, y_val)
+#shuffle(x_val, y_val)
 n_train = len(x_train)
 #steps_per_epoch = n_train // batch_size
 print("x_val.shape", x_val.shape)
@@ -151,13 +155,18 @@ model.compile(
     optimizer=tf.keras.optimizers.Adam(0.0001),
     loss=tfa.losses.TripletSemiHardLoss())
 
+filepath = "triplet_loss2_ep{epoch:02d}_BS%d.hdf5" % batch_size
+checkpoint = ModelCheckpoint(filepath, verbose=1, save_weights_only=True, period=5)
+callbacks_list = [checkpoint]
+
 # Train the network
 history = model.fit(
     x_train,
     y_train,
     epochs=epochs,
-    batch_size=32,
-    validation_data=(x_train, y_train))
+    batch_size=batch_size,
+    validation_data=(x_train, y_train),
+    callbacks=callbacks_list)
 
 fig = plt.figure(figsize=(8,8))
 plt.plot(history.history['loss'], label='training loss')
@@ -181,17 +190,7 @@ transfer_weights(model, testing_embeddings)
 plot_pca(testing_embeddings, x_test, y_test, x_embeddings_before_train,
          no_of_components, epochs)
 
-#out_m = io.open('meta.tsv', 'w', encoding='utf-8')
-#for img, labels in tfds.as_numpy(test_dataset):
-#    [out_m.write(str(x) + "\n") for x in labels]
-#out_m.close()
-
-
-#try:
-#  from google.colab import files
-#  files.download('vecs.tsv')
-#  files.download('meta.tsv')
-#except:
-#  pass
-
+# evaluate
+loss, acc = model.evaluate(x_test,  y_test, verbose=2)
+print("model, accuracy: {:5.2f}%".format(100*acc)) 
 
