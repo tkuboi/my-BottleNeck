@@ -116,7 +116,7 @@ input_image_shape = (dim[0], dim[1], 3)
 embedding_size = 128 
 no_of_components = 2  # for visualization -> PCA.fit_transform()
 batch_size=64
-epochs = 20 
+epochs = 40 
 dir_path = sys.argv[1] 
 test_dir_path = sys.argv[2] 
 
@@ -190,7 +190,4 @@ transfer_weights(model, testing_embeddings)
 plot_pca(testing_embeddings, x_test, y_test, x_embeddings_before_train,
          no_of_components, epochs)
 
-# evaluate
-loss, acc = model.evaluate(x_test,  y_test, verbose=2)
-print("model, accuracy: {:5.2f}%".format(100*acc)) 
 
