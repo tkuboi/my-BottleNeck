@@ -116,9 +116,12 @@ input_image_shape = (dim[0], dim[1], 3)
 embedding_size = 128 
 no_of_components = 2  # for visualization -> PCA.fit_transform()
 batch_size=64
-epochs = 40 
+if len(sys.argv) < 4:
+    print("Usage: <train_dir_path> <test_dir_path> <epochs>")
+    exit()
 dir_path = sys.argv[1] 
 test_dir_path = sys.argv[2] 
+epochs = int(sys.argv[3]) 
 
 #(x_test, y_test) = read_images('testset', 'wineDataToImageFilename_2020_02_10.csv', dim)
 x_test = np.load("%s/test/x.npy" % test_dir_path) 

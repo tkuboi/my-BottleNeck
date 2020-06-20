@@ -70,7 +70,7 @@ def print_results(results, y_test, wines):
         print("-" * 20)
  
 def main():
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print("usage:python tripletloss_test.py unique_dir test_dir weight_file pickle_file")
         exit()
     dir_path = sys.argv[1]
@@ -85,8 +85,8 @@ def main():
     x_train = np.load("%s/x.npy" % dir_path)
     y_train = np.load("%s/y.npy" % dir_path)
 
-    x_test = np.load("%s/test/x.npy" % test_dir_path)
-    y_test = np.load("%s/test/y.npy" % test_dir_path)
+    x_test = np.load("%s/x.npy" % test_dir_path)
+    y_test = np.load("%s/y.npy" % test_dir_path)
 
     x_train = x_train.astype('float32')
     x_test = x_test.astype('float32')

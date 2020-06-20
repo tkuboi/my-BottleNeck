@@ -28,7 +28,7 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
     unique = set()
     keys = list(file_list.keys())
     np.random.shuffle(keys)
-    step = batch // 2 
+    step = batch // 2
     for n in range(epoch):
         print("epoch=", n)
         for i in range(0, num_wines, batch):
@@ -36,7 +36,7 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
             count = 0
             while count < batch:
                 try:
-                    _id = keys[i + j]
+                    _id = keys[(i + j) % len(keys)]
                     print(i, file_list[_id])
                     npx = np.load(file_list[_id])
                     #w = weakref.proxy(npx)
@@ -63,7 +63,11 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
                 except:
                     traceback.print_exc(file=sys.stdout)
                 finally:
-                    del npx
+                    try:
+                        del npx
+                    except:
+                        traceback.print_exc(file=sys.stdout)
+
                     j += 1
         #time.sleep(60)
     return dataset
