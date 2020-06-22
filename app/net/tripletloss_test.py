@@ -15,7 +15,7 @@ import tensorflow as tf
 #import tensorflow_datasets as tfds
 import tensorflow_addons as tfa
 
-
+from utils import import_images
 
 def create_model(dim, embedding_size):
     model = tf.keras.Sequential([
@@ -85,8 +85,9 @@ def main():
     x_train = np.load("%s/x.npy" % dir_path)
     y_train = np.load("%s/y.npy" % dir_path)
 
-    x_test = np.load("%s/x.npy" % test_dir_path)
-    y_test = np.load("%s/y.npy" % test_dir_path)
+    x_test, y_test = import_images(test_dir_path, dim)
+    x_test = np.array(x_test) 
+    y_test = np.array(y_test)
 
     x_train = x_train.astype('float32')
     x_test = x_test.astype('float32')
@@ -105,7 +106,7 @@ def main():
     tests = model.predict(x_test)
 
     wines = pickle.load(open(pickle_file, 'rb'))
-    results = get_neighbors(embeddings, y_train, tests, y_test, 10)
+    results = get_neighbors(embeddings, y_train, tests, y_test, 14)
     print_results(results, y_test, wines)
 
 if __name__ == '__main__':
