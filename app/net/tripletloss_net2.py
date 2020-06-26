@@ -111,7 +111,8 @@ def transfer_weights(model, testing_embeddings):
 
 #test_dataset = test_dataset.batch(32)
 #test_dataset = test_dataset.map(_normalize_img)
-dim = (240, 320)
+#dim = (240, 320)
+dim = (150, 200)
 input_image_shape = (dim[0], dim[1], 3)
 embedding_size = 128 
 no_of_components = 2  # for visualization -> PCA.fit_transform()
@@ -159,7 +160,8 @@ model.compile(
     loss=tfa.losses.TripletSemiHardLoss())
 
 filepath = "triplet_loss2_ep{epoch:02d}_BS%d.hdf5" % batch_size
-checkpoint = ModelCheckpoint(filepath, verbose=1, save_weights_only=True, period=5)
+checkpoint = ModelCheckpoint(
+    filepath, verbose=1, save_weights_only=True, save_best_only=True, save_freq='epoch')
 callbacks_list = [checkpoint]
 
 # Train the network

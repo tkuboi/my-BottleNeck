@@ -78,12 +78,14 @@ def main():
     weight_file = sys.argv[3]
     pickle_file = sys.argv[4]
 
-    dim = (240, 320)
+    #dim = (240, 320)
+    dim = (150, 200)
     input_image_shape = (dim[0], dim[1], 3)
     embedding_size = 128
 
     x_train = np.load("%s/x.npy" % dir_path)
     y_train = np.load("%s/y.npy" % dir_path)
+    print("Unique wines:", y_train.shape[0])
 
     x_test, y_test = import_images(test_dir_path, dim)
     x_test = np.array(x_test) 
