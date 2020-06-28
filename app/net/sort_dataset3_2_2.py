@@ -8,7 +8,8 @@ import numpy as np
 import copy
 from PIL import Image
 
-DIMENSION = (240, 320)
+#DIMENSION = (240, 320)
+DIMENSION = (150, 200)
 
 def get_filelist(dir_path):
     filelist = {}
@@ -41,8 +42,8 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
                     print(i, file_list[_id])
                     npx = np.load(file_list[_id])
                     #w = weakref.proxy(npx)
-                    #if n == 0:
-                    #    np.random.shuffle(npx)
+                    if n == 0:
+                        np.random.shuffle(npx)
                     print(npx.shape)
                     if _id not in unique:
                         dataset["unique"]["x"].append(copy.deepcopy(npx[0]))
