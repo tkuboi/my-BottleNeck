@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 import tensorflow as tf
 
+from tensorflow.keras.layers import *
+
 from facenet3 import create_base_network2
 from utils import import_images
 from tripletloss_test import get_dists, get_neighbors, print_results
