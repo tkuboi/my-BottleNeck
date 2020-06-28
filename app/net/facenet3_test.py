@@ -39,7 +39,6 @@ if __name__ == "__main__":
 
     model = create_base_network2(input_image_shape, embedding_size)
     input_images = Input(shape=input_image_shape, name='input_image') # input layer for images
-    input_labels = Input(shape=(1,), name='input_label')    # input layer for labels
     model.compile(
         loss=tfa.losses.TripletSemiHardLoss(),
         optimizer=tf.keras.optimizers.Adam(0.0001))
