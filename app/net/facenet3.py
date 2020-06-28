@@ -235,7 +235,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding='same')(x)
     x4 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #3b
     x1 = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -246,7 +246,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #3c
     x2 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -255,7 +255,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x3 = Conv2D(64, kernel_size=(5, 5), strides=2, padding='same', activation='relu')(x3)
     x4 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
     x = concatenate([x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #4a
     x1 = Conv2D(256, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -266,7 +266,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #4b
     x1 = Conv2D(224, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -277,7 +277,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #4c
     x1 = Conv2D(192, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -288,7 +288,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #4d
     x1 = Conv2D(160, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -299,7 +299,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #4e
     x2 = Conv2D(160, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -308,7 +308,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x3 = Conv2D(128, kernel_size=(5, 5), strides=2, padding='same', activation='relu')(x3)
     x4 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
     x = concatenate([x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #5a
     x1 = Conv2D(384, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -319,7 +319,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = l2_normalize(x, 1) 
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
     #5b
     x1 = Conv2D(384, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
@@ -330,7 +330,7 @@ def create_base_network2(image_input_shape, embedding_size):
     x4 = MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding='same')(x)
     x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
     x = concatenate([x1, x2, x3, x4], axis=3)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
 
 
     #x = AveragePooling2D(pool_size=(7, 7), strides=1)(x)
@@ -475,12 +475,13 @@ if __name__ == "__main__":
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                           0.005,
-                          decay_steps=steps_per_epoch*1000,
+                          decay_steps=steps_per_epoch*10,
                           decay_rate=1,
                           staircase=False)
         # train session
         opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr=0.00001)  # choose optimiser. RMS is good too!
+        #opt = Adagrad(lr_schedule)  # choose optimiser. RMS is good too!
         #opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
 
         #model.compile(loss=triplet_loss_adapted_from_tf, optimizer=opt)
