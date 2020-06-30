@@ -19,8 +19,9 @@ def read_directory(dir_path, out_dir):
             if im.size[0] > im.size[1]:
                 im = im.rotate(-90, expand=1)
             im = im.resize(DIM)
-            labels = multi_flip(im)
-            labels = multi_rotates(labels)
+            labels = [im]
+            #labels = multi_flip(im)
+            labels = multi_rotates(labels, 15)
             parts = path.split("/")
             folder = parts[-2]
             out_dir_path = "%s/%s" % (out_dir, folder)
@@ -51,7 +52,7 @@ def multi_rotates(ims, angle=10):
 def multi_rotate(im, angle=10):
     images = []
     for d in range(-angle, angle):
-        images.append(im.rotate(d, expand=1))
+        images.append(im.rotate(d, expand=1, fillcolor=(0, 0, 0)))
     return images
 
 def multi_flip(im):
