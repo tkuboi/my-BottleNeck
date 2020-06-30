@@ -56,18 +56,24 @@ def get_neighbors(embeddings, y_train, tests, y_test, k):
 
 def print_results(results, y_test, wines):
     #print(results)
+    correct = 0
     for i, neighbors in enumerate(results):
         _id = int(y_test[i])
         print("-" * 20)
         print(wines[_id] if _id in wines else _id, " is one of :")
         for neighbor in neighbors:
             n_id = int(neighbor[1])
+            if i == 0 and _id == n_id:
+                correct += 1
             if n_id in wines:
                 print(n_id, wines[n_id], ", distance: ", neighbor[0])
             else:
                 print(n_id, ", confidence: ", neighbor[0])
                 
         print("-" * 20)
+    accuracy = correct / len(results)
+    print("Accuracy:", accuracy)
+    return accuracy
  
 def main():
     if len(sys.argv) < 5:
@@ -108,8 +114,8 @@ def main():
     tests = model.predict(x_test)
 
     wines = pickle.load(open(pickle_file, 'rb'))
-    results = get_neighbors(embeddings, y_train, tests, y_test, 14)
-    print_results(results, y_test, wines)
+    results = get_neighbors(embeddings, y_train, tests, y_test, 10)
+    accuracy = print_results(results, y_test, wines)
 
 if __name__ == '__main__':
     main()

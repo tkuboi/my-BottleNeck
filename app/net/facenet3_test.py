@@ -48,5 +48,5 @@ if __name__ == "__main__":
     tests = model.predict(x_test)
 
     wines = pickle.load(open(pickle_file, 'rb'))
-    results = get_neighbors(embeddings, y_train, tests, y_test, 14)
+    results = get_neighbors(embeddings, y_train, tests, y_test, 10)
     print_results(results, y_test, wines)
