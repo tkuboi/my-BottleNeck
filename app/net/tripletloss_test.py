@@ -61,9 +61,9 @@ def print_results(results, y_test, wines):
         _id = int(y_test[i])
         print("-" * 20)
         print(wines[_id] if _id in wines else _id, " is one of :")
-        for neighbor in neighbors:
+        for j, neighbor in enumerate(neighbors):
             n_id = int(neighbor[1])
-            if i == 0 and _id == n_id:
+            if j == 0 and _id == n_id:
                 correct += 1
             if n_id in wines:
                 print(n_id, wines[n_id], ", distance: ", neighbor[0])
