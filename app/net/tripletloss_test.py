@@ -57,14 +57,17 @@ def get_neighbors(embeddings, y_train, tests, y_test, k):
 def print_results(results, y_test, wines):
     #print(results)
     correct = 0
+    top3 = 0
     for i, neighbors in enumerate(results):
         _id = int(y_test[i])
+        if _id == int(neighbors[0][1]):
+            correct += 1
+        if _id in (int(neighbors[0][1]), int(neighbors[1][1]), int(neighbors[2][1])):
+            top3 += 1
         print("-" * 20)
         print(wines[_id] if _id in wines else _id, " is one of :")
         for j, neighbor in enumerate(neighbors):
             n_id = int(neighbor[1])
-            if j == 0 and _id == n_id:
-                correct += 1
             if n_id in wines:
                 print(n_id, wines[n_id], ", distance: ", neighbor[0])
             else:
@@ -72,7 +75,8 @@ def print_results(results, y_test, wines):
                 
         print("-" * 20)
     accuracy = correct / len(results)
-    print("Accuracy:", accuracy)
+    top3_accuracy = top3 / len(results)
+    print("Accuracy:", accuracy, "Top3 Accuracy:", top3_accuracy)
     return accuracy
  
 def main():
