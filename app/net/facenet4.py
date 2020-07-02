@@ -257,88 +257,12 @@ def create_base_network2(image_input_shape, embedding_size):
     x = concatenate([x2, x3, x4], axis=3)
     #x = Dropout(0.2)(x)
 
-    #4a
-    x1 = Conv2D(256, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(96, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 1) 
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #4b
-    x1 = Conv2D(224, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(112, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(224, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 1) 
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #4c
-    x1 = Conv2D(192, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(256, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 1) 
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #4d
-    x1 = Conv2D(160, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(144, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(288, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(32, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(64, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 1) 
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #4e
-    x2 = Conv2D(160, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(256, kernel_size=(3, 3), strides=2, padding='same', activation='relu')(x2)
-    x3 = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(128, kernel_size=(5, 5), strides=2, padding='same', activation='relu')(x3)
-    x4 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='same')(x)
-    x = concatenate([x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #5a
-    x1 = Conv2D(384, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(192, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(384, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(48, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(128, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = l2_normalize(x, 1) 
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-    #5b
-    x1 = Conv2D(384, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(192, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x2 = Conv2D(384, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x2)
-    x3 = Conv2D(48, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
-    x3 = Conv2D(128, kernel_size=(5, 5), strides=1, padding='same', activation='relu')(x3)
-    x4 = MaxPooling2D(pool_size=(3, 3), strides=(1, 1), padding='same')(x)
-    x4 = Conv2D(128, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x4)
-    x = concatenate([x1, x2, x3, x4], axis=3)
-    #x = Dropout(0.2)(x)
-
-
-    #x = AveragePooling2D(pool_size=(7, 7), strides=1)(x)
-    x = AveragePooling2D(pool_size=(3, 3), strides=1)(x)
+    x = AveragePooling2D(pool_size=(7, 7), strides=1)(x)
+    #x = AveragePooling2D(pool_size=(3, 3), strides=1)(x)
     #x = AveragePooling2D(pool_size=(2, 2), strides=1)(x)
     x = Flatten()(x)
     #x = Dense(128, activation='relu')(x)
-    x = Dropout(0.2)(x)
+    #x = Dropout(0.2)(x)
     x = Dense(embedding_size, activation=None)(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 1)
@@ -474,12 +398,13 @@ if __name__ == "__main__":
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
-                          0.005,
+                          0.0001,
                           decay_steps=steps_per_epoch*10,
                           decay_rate=1,
                           staircase=False)
         # train session
-        opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
+        #opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
+        opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr=0.00001)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr_schedule)  # choose optimiser. RMS is good too!
         #opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
@@ -490,7 +415,7 @@ if __name__ == "__main__":
         if weight_file:
             model.load_weights(weight_file)
 
-        checkpoint_path = "facenet_v3_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
+        checkpoint_path = "facenet_v4_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
         checkpoint_dir = os.path.dirname(checkpoint_path)
         #checkpoint = ModelCheckpoint(filepath, verbose=1, save_best_only=False, period=5)
         checkpoint = ModelCheckpoint(checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True, period=1)
