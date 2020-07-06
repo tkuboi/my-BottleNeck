@@ -214,13 +214,16 @@ def create_base_network2(image_input_shape, embedding_size):
     #x = Flatten()(input_image)
     #x = Conv2D(64, kernel_size=(7, 7), strides=2, padding='same', activation='relu', kernel_regularizer=regularizers.l2(0.001))(input_image)
     x = Conv2D(64, kernel_size=(7, 7), strides=2, padding='same', activation='relu' )(input_image)
+    #x = Dropout(0.2)(x)
     x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 1)
     #x = MaxPooling2D(pool_size=(3, 3), strides=2, padding='same')(x)
     #inception 2
     x = Conv2D(64, kernel_size=(1, 1), strides=1, padding='same', activation='relu')(x)
+    #x = Dropout(0.2)(x)
     x = Conv2D(192, kernel_size=(3, 3), strides=1, padding='same', activation='relu')(x)
+    #x = Dropout(0.2)(x)
     #x = concatenate([x, x1], axis=3)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 1)
@@ -262,7 +265,7 @@ def create_base_network2(image_input_shape, embedding_size):
     #x = AveragePooling2D(pool_size=(2, 2), strides=1)(x)
     x = Flatten()(x)
     #x = Dense(128, activation='relu')(x)
-    #x = Dropout(0.2)(x)
+    x = Dropout(0.2)(x)
     x = Dense(embedding_size, activation=None)(x)
     #x = LayerNormalization(epsilon=1e-6)(x)
     x = l2_normalize(x, 1)
@@ -399,7 +402,7 @@ if __name__ == "__main__":
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                           0.0001,
-                          decay_steps=steps_per_epoch*10,
+                          decay_steps=steps_per_epoch*100,
                           decay_rate=1,
                           staircase=False)
         # train session

@@ -474,12 +474,13 @@ if __name__ == "__main__":
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
-                          0.005,
-                          decay_steps=steps_per_epoch*10,
+                          0.0001,
+                          decay_steps=steps_per_epoch*100,
                           decay_rate=1,
                           staircase=False)
         # train session
-        opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
+        #opt = Adam(lr=0.0001)  # choose optimiser. RMS is good too!
+        opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr=0.00001)  # choose optimiser. RMS is good too!
         #opt = Adagrad(lr_schedule)  # choose optimiser. RMS is good too!
         #opt = RMSprop(lr_schedule)  # choose optimiser. RMS is good too!
