@@ -3,6 +3,7 @@ import os
 import sys
 import pickle
 
+from collections import OrderedDict
 from PIL import Image
 from sklearn.decomposition import PCA
 
@@ -51,8 +52,19 @@ def get_neighbors(embeddings, y_train, tests, y_test, k):
         zipped = list(zipped)
         #print(zipped)
         neighbors = sorted(zipped, key=lambda x : x[0])
-        results.append(neighbors[:k])
+        results.append(k_nearest(neighbors, k))
     return results
+
+def k_nearest(neighbors, k):
+    n = 0
+    top_k = OrderedDict() 
+    for neighbor in neighbors:
+        if neighbor[1] not in top_k:
+            top_k[neighbor[1]] = neighbor[0]
+            n += 1
+        if n == k:
+            break
+    return [(v, k) for k, v in top_k.items()] 
 
 def print_results(results, y_test, wines):
     #print(results)
@@ -71,7 +83,7 @@ def print_results(results, y_test, wines):
             if n_id in wines:
                 print(n_id, wines[n_id], ", distance: ", neighbor[0])
             else:
-                print(n_id, ", confidence: ", neighbor[0])
+                print(n_id, ", distance: ", neighbor[0])
                 
         print("-" * 20)
     accuracy = correct / len(results)

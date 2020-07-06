@@ -26,7 +26,7 @@ def get_filelist(dir_path):
 def create_dataset(file_list, batch, epoch, dim, num_wines=256):
     dataset = {"train":{"x":[], "y":[]}, "validation":{"x":[], "y":[]},
                "test":{"x":[], "y":[]}, "unique":{"x":[], "y":[]}}
-    unique = set()
+    unique = {} 
     keys = list(file_list.keys())
     #np.random.shuffle(keys)
     step = batch // 2
@@ -45,10 +45,13 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
                     if n == 0:
                         np.random.shuffle(npx)
                     print(npx.shape)
-                    if _id not in unique:
+                    if _id not in unique or unique[_id] < 3:
                         dataset["unique"]["x"].append(copy.deepcopy(npx[0]))
                         dataset["unique"]["y"].append(_id)
-                        unique.add(_id)
+                        if _id in unique:
+                            unique[_id] += 1
+                        else:
+                            unique[_id] = 1 
                     if npx.shape[0] < 6:
                         j += 1
                         continue
@@ -72,7 +75,7 @@ def create_dataset(file_list, batch, epoch, dim, num_wines=256):
 
                     j += 1
         #time.sleep(60)
-    return dataset
+    return dataset, unique.keys() 
 
 def to_np(image, dim):
     arr = []
@@ -115,12 +118,12 @@ def main():
     batch = int(sys.argv[4])
     epoch = int(sys.argv[5])
     file_list = get_filelist(in_dir)
-    dataset = create_dataset(file_list, batch, epoch, DIMENSION, num_wines)
+    dataset, wines = create_dataset(file_list, batch, epoch, DIMENSION, num_wines)
     np_save(dataset["train"]['x'], dataset["train"]['y'], "%s/train" % (out_dir))
     np_save(dataset["validation"]['x'], dataset["validation"]['y'], "%s/validation" % (out_dir))
     np_save(dataset["test"]['x'], dataset["test"]['y'], "%s/test" % (out_dir))
     np_save(dataset["unique"]['x'], dataset["unique"]['y'], "%s/unique" % (out_dir))
-    print("Num Unique Wines:", len(dataset['unique']['y']))
+    print("Num Unique Wines:", len(wines))
     
 if __name__ == '__main__':
     main()
