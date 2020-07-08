@@ -335,9 +335,10 @@ if __name__ == "__main__":
     dir_path = sys.argv[1]
     epochs = int(sys.argv[2]) 
     weight_file = sys.argv[3] if len(sys.argv) > 3 else None
+    train_flag_str = sys.argv[4] if len(sys.argv) > 4 else '1'
     dim = (150, 200) 
     batch_size = 64 
-    train_flag = True  # either     True or False
+    train_flag = True if train_flag_str == '1' else False  # either True or False
 
     #embedding_size = 64
     embedding_size = 128 
@@ -375,8 +376,11 @@ if __name__ == "__main__":
     print("x_tarin.shape", x_train.shape)
     print("y_train.shape", y_train.shape)
     x_train = x_train.astype('float32')
+    y_train = y_train.astype('int32')
     x_val = x_val.astype('float32')
+    y_val = y_val.astype('int32')
     x_test = x_test.astype('float32')
+    y_test = y_test.astype('int32')
     x_train /= 255.
     x_val /= 255.
     x_test /= 255.
@@ -396,8 +400,8 @@ if __name__ == "__main__":
         #model = Model(inputs=[input_images, input_labels],
         #              outputs=labels_plus_embeddings)
         model = base_network 
-
         model.summary()
+        model.save('saved_model/facenet4_model')
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
@@ -460,8 +464,8 @@ if __name__ == "__main__":
     else:
 
         #####
-        model = load_model('semiH_trip_MNIST_v13_ep25_BS256.hdf5',
-                                        custom_objects={'triplet_loss_adapted_from_tf':triplet_loss_adapted_from_tf})
+        model = load_model('saved_model/facenet4_model')
+        model.load_weights(weight_file)
 
     # Test the network
     # creating an empty network

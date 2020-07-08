@@ -5,19 +5,21 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from tensorflow.keras.layers import *
+from tensorflow.keras.models import load_model
 
 from facenet4 import create_base_network2
 from utils import import_images
 from tripletloss_test import get_dists, get_neighbors, print_results
 
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
-        print("usage:<unique_dir> <test_dir> <weight_file> <pickle_file>")
+    if len(sys.argv) < 6:
+        print("usage:<unique_dir> <test_dir> <model_file> <weight_file> <pickle_file>")
         exit()
     dir_path = sys.argv[1]
     test_dir_path = sys.argv[2]
-    weight_file = sys.argv[3]
-    pickle_file = sys.argv[4]
+    model_file = sys.argv[3]
+    weight_file = sys.argv[4]
+    pickle_file = sys.argv[5]
 
     #dim = (240, 320)
     dim = (150, 200)
@@ -37,11 +39,8 @@ if __name__ == "__main__":
     x_train /= 255.
     x_test /= 255.
 
-    model = create_base_network2(input_image_shape, embedding_size)
-    input_images = Input(shape=input_image_shape, name='input_image') # input layer for images
-    model.compile(
-        loss=tfa.losses.TripletSemiHardLoss(),
-        optimizer=tf.keras.optimizers.Adam(0.0001))
+    #model = create_base_network2(input_image_shape, embedding_size)
+    model = load_model(model_file)
     model.load_weights(weight_file)
     embeddings = model.predict(x_train)
     #print(embeddings)
