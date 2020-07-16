@@ -19,8 +19,12 @@ def read_directories(dir_path, out_dir):
     return count
 
 def read_directory(dir_path):
-    label0 = Image.open(dir_path + "/label.png")
-    labels = read_label(label0, RESIZED[0]/DIM[0])
+    #label0 = Image.open(dir_path + "/label.png")
+    label_images = read_labels(dir_path)
+    labels = []
+    for label in label_images:
+        labels += scale_label(label, RESIZED[0]/DIM[0])
+    #labels = read_label(label0, RESIZED[0]/DIM[0])
     images = []
     coords = []
     file_names = []
@@ -79,18 +83,30 @@ def scale_up(scale1, pos, fraction, ah):
     bot_y = top_y + h
     return top_x, top_y, bot_x, bot_y 
 
-def read_label(im, fraction):
+def read_labels(dir_path):
+    labels = []
+    for item in os.listdir(dir_path):
+        path = os.path.join(dir_path, item)
+        if not os.path.isdir(path) and "label" in item:
+            labels.append(Image.open(path))
+    return labels
+
+def scale_label(im, fraction):
     #im = Image.open(dir_path + "/label.png")
     resized = []
     # 30 x 40
     #resized.append(im)
     small = im.resize((int(im.size[0] * fraction), int(im.size[1] * fraction)))
     resized.append((small, fraction, 1.0))
-    down_scale = 2/3
+    """down_scale = 2/3
     resized.append(
         (im.resize((int(small.size[0] * down_scale), int(small.size[1] * down_scale))),
         fraction, down_scale))
     down_scale = 4/5
+    resized.append(
+        (im.resize((int(small.size[0] * down_scale), int(small.size[1] * down_scale))),
+        fraction, down_scale))"""
+    down_scale = 5/4
     resized.append(
         (im.resize((int(small.size[0] * down_scale), int(small.size[1] * down_scale))),
         fraction, down_scale))

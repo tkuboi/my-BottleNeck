@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import functools
 import numpy as np
 from PIL import Image
 
@@ -50,3 +51,10 @@ def shuffle(X,Y):
     np.random.shuffle(X)
     np.random.set_state(rng_state)
     np.random.shuffle(Y)
+
+def compose(*funcs):
+    if funcs:
+        return functools.reduce(
+                lambda f, g: lambda *args, **kw: g(f(*args, **kw)), funcs)
+    else:
+        raise ValueError('Composition of empty sequence not supported.')
