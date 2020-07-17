@@ -118,8 +118,9 @@ def _main(args):
     #    score_threshold=args.score_threshold,
     #    iou_threshold=args.iou_threshold)
     yolo_model.summary()
-    model = yolo(yolo_model, anchors, len(class_names), (608, 608),
-                args.score_threshold, args.iou_threshold) 
+    model = yolo(yolo_model, anchors, len(class_names))
+    #model = yolo(yolo_model, anchors, len(class_names), (608, 608),
+    #            args.score_threshold, args.iou_threshold) 
 
     for image_file in os.listdir(test_path):
         try:

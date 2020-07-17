@@ -17,7 +17,7 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Input, Lambda
 from tensorflow.keras.models import Model
 
-from yolo import (preprocess_true_boxes, yolo_body,
+from yolo import (preprocess_true_boxes, yolo, yolo_body,
                                      yolo_eval, yolo_head, yolo_loss2)
 from yolo_utils import draw_boxes
 
@@ -149,7 +149,7 @@ def _main(args):
     detectors_mask = np.expand_dims(detectors_mask, axis=0)
     matching_true_boxes = np.expand_dims(matching_true_boxes, axis=0)
 
-    num_steps = 1000
+    num_steps = 10
     # TODO: For full training, put preprocessing inside training loop.
     # for i in range(num_steps):
     #     loss = model.train_on_batch(
@@ -161,20 +161,14 @@ def _main(args):
     model.save_weights('overfit_weights.h5')
 
     # Create output variables for prediction.
-    yolo_outputs = yolo_head(model_body.output, anchors, len(class_names))
-    input_image_shape = K.placeholder(shape=(2, ))
-    boxes, scores, classes = yolo_eval(
-        yolo_outputs, input_image_shape, score_threshold=.3, iou_threshold=.9)
+    yolo_model = yolo(model, anchors, len(class_names))
+    yolo_outputs = yolo_model(image_data)
+    out_boxes, out_scores, out_classes = yolo_eval(
+            yolo_outputs,
+            [image.size[1], image.size[0]],
+            score_threshold=.3,
+            iou_threshold=.9)
 
-    # Run prediction on overfit image.
-    sess = K.get_session()  # TODO: Remove dependence on Tensorflow session.
-    out_boxes, out_scores, out_classes = sess.run(
-        [boxes, scores, classes],
-        feed_dict={
-            model_body.input: image_data,
-            input_image_shape: [image.size[1], image.size[0]],
-            K.learning_phase(): 0
-        })
     print('Found {} boxes for image.'.format(len(out_boxes)))
     print(out_boxes)
 
