@@ -17,6 +17,10 @@ from yolo import (preprocess_true_boxes, yolo_body,
                                      yolo_eval, yolo_head, yolo_loss2)
 from yolo_utils import draw_boxes
 
+YOLO_ANCHORS = np.array(
+    ((0.57273, 0.677385), (1.87446, 2.06253), (3.33843, 5.47434),
+     (7.88282, 3.52778), (9.77052, 9.16828)))
+
 def get_classes(classes_path):
     '''loads the classes'''
     with open(classes_path) as f:
@@ -190,8 +194,24 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     model.save_weights('trained_stage_3.h5')
 
 def main(args):
+    dat_path = os.path.expanduser(args.data_path)
+    classes_path = os.path.expanduser(args.classes_path)
+    anchors_path = os.path.expanduser(args.anchors_path)
+
+    with open(classes_path) as f:
+        class_names = f.readlines()
+    class_names = [c.strip() for c in class_names]
+
+    if os.path.isfile(anchors_path):
+        with open(anchors_path) as f:
+            anchors = f.readline()
+            anchors = [float(x) for x in anchors.split(',')]
+            anchors = np.array(anchors).reshape(-1, 2)
+    else:
+        anchors = YOLO_ANCHORS
+
     model_body, model = create_model(anchors, class_names)
-    images, boxes = read_directory(dir_path)
+    images, boxes = read_directory(data_path)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
     train(model, class_names, anchors, images, boxes, detector_mask, matching_true_boxes)
 
