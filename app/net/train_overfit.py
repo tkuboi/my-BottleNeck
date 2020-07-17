@@ -137,6 +137,7 @@ def _main(args):
     #    [image_input, boxes_input, detectors_mask_input,
     #     matching_boxes_input], model_body.output)
     model = model_body
+    model.summary()
     num_classes = len(class_names)
     loss_funcs = [yolo_loss2(anchors, num_classes, mask, box) for mask, box in zip(detectors_mask, matching_true_boxes)]
     model.compile(

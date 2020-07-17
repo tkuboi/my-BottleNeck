@@ -1,6 +1,8 @@
 import argparse
 import io
 import os
+import sys
+import traceback
 
 import h5py
 import matplotlib.pyplot as plt
@@ -41,14 +43,32 @@ def read_images(file_path):
         list: a list of Image objects
         list: a list of bounding boxes
     """
-    pass
+    images = []
+    boxes = []
+    dir_path = os.path.dirname(file_path) 
+    with open(file_path) as f:
+        for line in f:
+            try:
+                tokens = line.split("\t")
+                image_name = os.path.join(dir_path, tokens[0])
+                image = Image.open(image_name)
+                images.append(image)
+                box = tuple(map(int, tokens[1:]))
+                boxes.append(box)
+            except:
+                traceback.print_exc(file=sys.stdout)
+    return images, boxes 
 
-def create_training_data(images, boxes=None):
+def create_training_data(images, boxes=None, **kw):
+    if "input_image_size" in kw:
+        input_image_size = kw["input_image_size"]
+    else:
+        input_image_size = (608, 608)
     orig_size = np.array([images[0].width, images[0].height])
     orig_size = np.expand_dims(orig_size, axis=0)
 
     # Image preprocessing.
-    processed_images = [i.resize((416, 416), PIL.Image.BICUBIC) for i in images]
+    processed_images = [i.resize(input_image_size, PIL.Image.BICUBIC) for i in images]
     processed_images = [np.array(image, dtype=np.float) for image in processed_images]
     processed_images = [image/255. for image in processed_images]
 
@@ -65,7 +85,9 @@ def create_training_data(images, boxes=None):
         boxes_wh = [box[:, 3:5] - box[:, 1:3] for box in boxes]
         boxes_xy = [boxxy / orig_size for boxxy in boxes_xy]
         boxes_wh = [boxwh / orig_size for boxwh in boxes_wh]
-        boxes = [np.concatenate((boxes_xy[i], boxes_wh[i], box[:, 0:1]), axis=1) for i, box in enumerate(boxes)]
+        boxes = [
+            np.concatenate((boxes_xy[i], boxes_wh[i], box[:, 0:1]), axis=1)
+            for i, box in enumerate(boxes)]
 
         # find the max number of boxes
         max_boxes = 0
