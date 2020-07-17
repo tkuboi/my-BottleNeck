@@ -59,6 +59,23 @@ def read_images(file_path):
                 traceback.print_exc(file=sys.stdout)
     return images, boxes 
 
+def read_directory(dir_path):
+    images = []
+    boxes = []
+    for item in os.listdir(dir_path):
+        path = os.path.join(dir_path, item)
+        if os.path.isdir(path):
+            ims, bxs = read_directory(path)
+            images += ims
+            boxes += bxs
+        elif "coordinates" in item:
+            file_path = os.path.join(path, item)
+            ims, bxs = read_images(file_path)
+            images += ims
+            boxes += bxs
+            
+    return images, boxes
+
 def create_training_data(images, boxes=None, **kw):
     if "input_image_size" in kw:
         input_image_size = kw["input_image_size"]
@@ -173,32 +190,32 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     model.save_weights('trained_stage_3.h5')
 
 def main(args):
-    #create model
-    #read training data
-    #retrain
-    pass
+    model_body, model = create_model(anchors, class_names)
+    images, boxes = read_directory(dir_path)
+    detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
+    train(model, class_names, anchors, images, boxes, detector_mask, matching_true_boxes)
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
     description='Train YOLO_v2 model to overfit on a single image.')
 
-argparser.add_argument(
-    '-d',
-    '--data_path',
-    help='path to HDF5 file containing pascal voc dataset',
-    default='~/datasets/VOCdevkit/pascal_voc_07_12.hdf5')
+    argparser.add_argument(
+        '-d',
+        '--data_path',
+        help='path to HDF5 file containing pascal voc dataset',
+        default='~/datasets/VOCdevkit/pascal_voc_07_12.hdf5')
 
-argparser.add_argument(
-    '-a',
-    '--anchors_path',
-    help='path to anchors file, defaults to yolo_anchors.txt',
-    default='model_data/yolo_anchors.txt')
+    argparser.add_argument(
+        '-a',
+        '--anchors_path',
+        help='path to anchors file, defaults to yolo_anchors.txt',
+        default='model_data/yolo_anchors.txt')
 
-argparser.add_argument(
-    '-c',
-    '--classes_path',
-    help='path to classes file, defaults to pascal_classes.txt',
-    default='model_data/coco_classes.txt')
+    argparser.add_argument(
+        '-c',
+        '--classes_path',
+        help='path to classes file, defaults to pascal_classes.txt',
+        default='model_data/coco_classes.txt')
 
-args = argparser.parse_args()
-main(args)
+    args = argparser.parse_args()
+    main(args)
