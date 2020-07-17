@@ -173,13 +173,26 @@ def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
     model = Model(model_body.inputs, len(anchors), len(class_names))
     return model_body, model
 
-def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, validation_split=0.1):
+def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
+    if 'validation_split' in kw:
+        validation_split = kw['validation_split']
+    else:
+        validation_split=0.1
+    if 'num_epochs' in kw:
+        num_epochs = kw['num_epochs']
+    else:
+        num_epochs = 30
+    if 'batch_size' in kw:
+        batch_size = kw['batch_size']
+    else:
+        batch_size = 8
+
     num_classes = len(class_names)
     loss_funcs = [yolo_loss2(anchors, num_classes, mask, box)
                   for mask, box in zip(detectors_mask, matching_true_boxes)]
     model.compile(optimizer='adam', loss=loss_funcs)
     logging = TensorBoard()
-    checkpoint = ModelCheckpoint("trained_stage_3_best.h5", monitor='val_loss',
+    checkpoint = ModelCheckpoint("yolo_v2_weights_best.h5", monitor='val_loss',
                                  save_weights_only=True, save_best_only=True)
     early_stopping = EarlyStopping(
         monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
@@ -187,16 +200,65 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     model.fit(image_data, boxes,
               np.zeros(len(image_data)),
               validation_split=0.1,
-              batch_size=8,
-              epochs=30,
+              batch_size=batch_size,
+              epochs=num_epochs,
               callbacks=[logging, checkpoint, early_stopping])
 
-    model.save_weights('trained_stage_3.h5')
+    model.save_weights('yolo_v2_weights_ep%02d_BS%d.h5' % (num_epochs, batch_size))
+
+def evaluate(model, class_names, anchors, test_path, output_path):
+    # Create output variables for prediction.
+    yolo_model = yolo(model, anchors, len(class_names))
+    for image_file in os.listdir(test_path):
+        try:
+            image_type = imghdr.what(os.path.join(test_path, image_file))
+            if not image_type:
+                continue
+        except IsADirectoryError:
+            continue
+
+        image = Image.open(os.path.join(test_path, image_file))
+        if is_fixed_size:  # TODO: When resizing we can use minibatch input.
+            resized_image = image.resize(
+                tuple(reversed(model_image_size)), Image.BICUBIC)
+            image_data = np.array(resized_image, dtype='float32')
+        else:
+            # Due to skip connection + max pooling in YOLO_v2, inputs must have
+            # width and height as multiples of 32.
+            new_image_size = (image.width - (image.width % 32),
+                              image.height - (image.height % 32))
+            resized_image = image.resize(new_image_size, Image.BICUBIC)
+            image_data = np.array(resized_image, dtype='float32')
+            print(image_data.shape)
+
+        image_data /= 255.
+        image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
+
+        yolo_outputs = yolo_model(image_data)
+        out_boxes, out_scores, out_classes = yolo_eval(
+            yolo_outputs,
+            [image.size[1], image.size[0]],
+            score_threshold=.3,
+            iou_threshold=.9)
+
+        print('Found {} boxes for {}'.format(len(out_boxes), image_file))
+
+        # Plot image with predicted boxes.
+        image_with_boxes = draw_boxes(image, out_boxes, out_classes,
+                                      class_names, out_scores)
+        image_with_boxes = Image.fromarray(image_with_boxes)
+        image_with_boxes.save(os.path.join(output_path, image_file), quality=90)
 
 def main(args):
     dat_path = os.path.expanduser(args.data_path)
     classes_path = os.path.expanduser(args.classes_path)
     anchors_path = os.path.expanduser(args.anchors_path)
+    test_path = os.path.expanduser(args.test_path)
+    output_path = os.path.expanduser(args.output_path)
+
+    if not os.path.exists(output_path):
+        print('Creating output path {}'.format(output_path))
+        os.mkdir(output_path)
 
     with open(classes_path) as f:
         class_names = f.readlines()
@@ -214,6 +276,7 @@ def main(args):
     images, boxes = read_directory(data_path)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
     train(model, class_names, anchors, images, boxes, detector_mask, matching_true_boxes)
+    evaluate(model, class_names, anchors, test_path, output_path)
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
@@ -236,6 +299,18 @@ if __name__ == '__main__':
         '--classes_path',
         help='path to classes file, defaults to pascal_classes.txt',
         default='model_data/coco_classes.txt')
+
+    argparser.add_argument(
+        '-t',
+        '--test_path',
+        help='path to directory of test images, defaults to images/',
+        default='images')
+
+    argparser.add_argument(
+        '-o',
+        '--output_path',
+        help='path to output test images, defaults to images/out',
+        default='images/out')
 
     args = argparser.parse_args()
     main(args)
