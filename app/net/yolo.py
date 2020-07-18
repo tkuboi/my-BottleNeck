@@ -219,9 +219,10 @@ def yolo_loss2(anchors,
         no_object_scale = 1
         class_scale = 1
         coordinates_scale = 1
-        tf.print("in loss")
+        #tf.print("in loss")
         pred_xy, pred_wh, pred_confidence, pred_class_prob = get_boxes(
             y_pred, anchors, num_classes)
+        #tf.print("Confidence", pred_confidence)
 
         # Unadjusted box predictions for loss.
         yolo_output_shape = K.shape(y_pred)
@@ -309,12 +310,8 @@ def yolo_loss2(anchors,
         total_loss = 0.5 * (
             confidence_loss_sum + classification_loss_sum + coordinates_loss_sum)
         if print_loss:
-            total_loss = tf.print(
-                total_loss, [
-                    total_loss, confidence_loss_sum, classification_loss_sum,
-                    coordinates_loss_sum
-                ],
-                message='yolo_loss, conf_loss, class_loss, box_coord_loss:')
+            tf.print(
+                total_loss)
 
         return total_loss
 

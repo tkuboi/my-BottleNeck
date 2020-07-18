@@ -3,6 +3,9 @@ import io
 import os
 import sys
 import traceback
+import colorsys
+import imghdr
+import random
 
 import h5py
 import matplotlib.pyplot as plt
@@ -61,8 +64,11 @@ def read_images(file_path):
                 tokens = line.split("\t")
                 image_name = os.path.join(dir_path, tokens[0])
                 image = Image.open(image_name)
+                if image.size[0] > image.size[1]:
+                    image = image.rotate(-90, expand=1)
                 images.append(image)
                 box = [0] + list(map(int, tokens[1:]))
+                #print(box)
                 boxes.append(box)
             except:
                 traceback.print_exc(file=sys.stdout)
@@ -147,8 +153,8 @@ def get_detector_mask(boxes, anchors):
     return np.array(detectors_mask), np.array(matching_true_boxes)
 
 def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
-    detectors_mask_shape = (13, 13, 5, 1)
-    matching_boxes_shape = (13, 13, 5, 5)
+    #detectors_mask_shape = (13, 13, 5, 1)
+    #matching_boxes_shape = (13, 13, 5, 5)
 
     # Create model body.
     print("CREATING TOPLESS WEIGHTS FILE")
@@ -157,7 +163,7 @@ def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
     model_body = load_model(yolo_path)
     #model_body.summary()
     topless_yolo = Model(model_body.inputs, model_body.layers[-2].output)
-    topless_yolo.summary()
+    #topless_yolo.summary()
     if load_pretrained:
         topless_yolo.load_weights(topless_yolo_path)
     topless_yolo.save_weights(topless_yolo_path)
@@ -171,8 +177,8 @@ def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
         )(topless_yolo.output)
 
     model_body = Model(topless_yolo.inputs, final_layer)
-    model = yolo(model_body, anchors, len(class_names))
-    return model_body, model
+    #model = yolo(model_body, anchors, len(class_names))
+    return model_body
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
     if 'validation_split' in kw:
@@ -198,9 +204,10 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     early_stopping = EarlyStopping(
         monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
 
-    print(image_data.shape)
-    print(boxes.shape)
+    #print(image_data.shape)
+    #print(boxes.shape)
     model.fit(image_data, boxes,
+              validation_split=validation_split,
               batch_size=batch_size,
               epochs=num_epochs,
               callbacks=[logging, checkpoint, early_stopping])
@@ -210,6 +217,10 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
 def evaluate(model, class_names, anchors, test_path, output_path):
     # Create output variables for prediction.
     yolo_model = yolo(model, anchors, len(class_names))
+
+    model_image_size = yolo_model.layers[0].input_shape[0][1:3]
+    is_fixed_size = model_image_size != (None, None)
+
     for image_file in os.listdir(test_path):
         try:
             image_type = imghdr.what(os.path.join(test_path, image_file))
@@ -230,12 +241,12 @@ def evaluate(model, class_names, anchors, test_path, output_path):
                               image.height - (image.height % 32))
             resized_image = image.resize(new_image_size, Image.BICUBIC)
             image_data = np.array(resized_image, dtype='float32')
-            print(image_data.shape)
+            #print(image_data.shape)
 
         image_data /= 255.
-        image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
+        image_input = np.expand_dims(image_data, 0)  # Add batch dimension.
 
-        yolo_outputs = yolo_model(image_data)
+        yolo_outputs = yolo_model(image_input)
         out_boxes, out_scores, out_classes = yolo_eval(
             yolo_outputs,
             [image.size[1], image.size[0]],
@@ -245,9 +256,9 @@ def evaluate(model, class_names, anchors, test_path, output_path):
         print('Found {} boxes for {}'.format(len(out_boxes), image_file))
 
         # Plot image with predicted boxes.
-        image_with_boxes = draw_boxes(image, out_boxes, out_classes,
-                                      class_names, out_scores)
-        image_with_boxes = Image.fromarray(image_with_boxes)
+        image_with_boxes = draw_boxes(image_data, out_boxes, out_classes,
+                                      class_names, out_scores, False)
+        #image_with_boxes = Image.fromarray(image_with_boxes)
         image_with_boxes.save(os.path.join(output_path, image_file), quality=90)
 
 def main(args):
@@ -256,6 +267,8 @@ def main(args):
     anchors_path = os.path.expanduser(args.anchors_path)
     test_path = os.path.expanduser(args.test_path)
     output_path = os.path.expanduser(args.output_path)
+    num_epochs = args.epochs
+    batch_size = args.batch_size
 
     if not os.path.exists(output_path):
         print('Creating output path {}'.format(output_path))
@@ -273,11 +286,17 @@ def main(args):
     else:
         anchors = YOLO_ANCHORS
 
-    model_body, model = create_model(anchors, class_names, False)
+    model = create_model(anchors, class_names, False)
+    model.summary()
     images, boxes = read_directory(data_path)
+    #print(images[3].size)
+    #print(images[4].size)
     image_data, boxes = create_training_data(images, boxes)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
-    train(model, class_names, anchors, image_data, boxes, detector_mask, matching_true_boxes)
+    train(
+            model, class_names, anchors, image_data,
+            boxes, detector_mask, matching_true_boxes,
+            num_epochs=num_epochs, batch_size=batch_size)
     evaluate(model, class_names, anchors, test_path, output_path)
 
 if __name__ == '__main__':
@@ -294,13 +313,13 @@ if __name__ == '__main__':
         '-a',
         '--anchors_path',
         help='path to anchors file, defaults to yolo_anchors.txt',
-        default='model_data/wine_anchors.txt')
+        default='model_data/yolo_anchors.txt')
 
     argparser.add_argument(
         '-c',
         '--classes_path',
         help='path to classes file, defaults to pascal_classes.txt',
-        default='model_data/wine_classes.txt')
+        default='model_data/coco_classes.txt')
 
     argparser.add_argument(
         '-t',
@@ -313,6 +332,20 @@ if __name__ == '__main__':
         '--output_path',
         help='path to output test images, defaults to images/out',
         default='images/out')
+
+    argparser.add_argument(
+        '-e',
+        '--epochs',
+        help='the number of epochs',
+        type=int,
+        default=30)
+
+    argparser.add_argument(
+        '-b',
+        '--batch_size',
+        help='the batch size',
+        type=int,
+        default=8)
 
     args = argparser.parse_args()
     main(args)
