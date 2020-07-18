@@ -8,12 +8,17 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL
+from PIL import Image
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Lambda
+from tensorflow.keras.layers import Input, Lambda, Conv2D
 from tensorflow.keras.models import Model
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping 
 
-from yolo import (preprocess_true_boxes, yolo_body,
+from yolo import (preprocess_true_boxes, yolo_body, yolo,
                                      yolo_eval, yolo_head, yolo_loss2)
 from yolo_utils import draw_boxes
 
@@ -57,7 +62,7 @@ def read_images(file_path):
                 image_name = os.path.join(dir_path, tokens[0])
                 image = Image.open(image_name)
                 images.append(image)
-                box = tuple(map(int, tokens[1:]))
+                box = [0] + list(map(int, tokens[1:]))
                 boxes.append(box)
             except:
                 traceback.print_exc(file=sys.stdout)
@@ -73,8 +78,7 @@ def read_directory(dir_path):
             images += ims
             boxes += bxs
         elif "coordinates" in item:
-            file_path = os.path.join(path, item)
-            ims, bxs = read_images(file_path)
+            ims, bxs = read_images(path)
             images += ims
             boxes += bxs
             
@@ -96,7 +100,7 @@ def create_training_data(images, boxes=None, **kw):
     if boxes is not None:
         # Box preprocessing.
         # Original boxes stored as 1D list of class, x_min, y_min, x_max, y_max.
-        boxes = [box.reshape((-1, 5)) for box in boxes]
+        boxes = [np.array(box).reshape((-1, 5)) for box in boxes]
         # Get extents as y_min, x_min, y_max, x_max, class for comparision with
         # model output.
         boxes_extents = [box[:, [2, 1, 4, 3, 0]] for box in boxes]
@@ -138,7 +142,7 @@ def get_detector_mask(boxes, anchors):
     matching_true_boxes = [0 for i in range(len(boxes))]
     for i, box in enumerate(boxes):
         detectors_mask[i], matching_true_boxes[i] =\
-            preprocess_true_boxes(box, anchors, [416, 416])
+            preprocess_true_boxes(box, anchors, [608, 608])
 
     return np.array(detectors_mask), np.array(matching_true_boxes)
 
@@ -146,31 +150,28 @@ def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
     detectors_mask_shape = (13, 13, 5, 1)
     matching_boxes_shape = (13, 13, 5, 5)
 
-    # Create model input layers.
-    image_input = Input(shape=(416, 416, 3))
-    boxes_input = Input(shape=(None, 5))
-    detectors_mask_input = Input(shape=detectors_mask_shape)
-    matching_boxes_input = Input(shape=matching_boxes_shape)
-
     # Create model body.
     print("CREATING TOPLESS WEIGHTS FILE")
     yolo_path = os.path.join('model_data', 'yolo.h5')
+    topless_yolo_path = os.path.join('model_data', 'yolo_topless.h5')
     model_body = load_model(yolo_path)
+    #model_body.summary()
     topless_yolo = Model(model_body.inputs, model_body.layers[-2].output)
-    topless_yolo.save_weights(topless_yolo_path)
+    topless_yolo.summary()
     if load_pretrained:
-        topless_yolo_path = os.path.join('model_data', 'yolo_topless.h5')
         topless_yolo.load_weights(topless_yolo_path)
+    topless_yolo.save_weights(topless_yolo_path)
 
     if freeze_body:
         for layer in topless_yolo.layers:
             layer.trainable = False
     final_layer = Conv2D(
-            len(anchors)*(5+len(class_names)), (1, 1), activation='linear'
+            len(anchors)*(5+len(class_names)), (1, 1),
+            activation='linear', name='conv2d_final'
         )(topless_yolo.output)
 
     model_body = Model(topless_yolo.inputs, final_layer)
-    model = Model(model_body.inputs, len(anchors), len(class_names))
+    model = yolo(model_body, anchors, len(class_names))
     return model_body, model
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
@@ -197,9 +198,9 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     early_stopping = EarlyStopping(
         monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
 
+    print(image_data.shape)
+    print(boxes.shape)
     model.fit(image_data, boxes,
-              np.zeros(len(image_data)),
-              validation_split=0.1,
               batch_size=batch_size,
               epochs=num_epochs,
               callbacks=[logging, checkpoint, early_stopping])
@@ -250,7 +251,7 @@ def evaluate(model, class_names, anchors, test_path, output_path):
         image_with_boxes.save(os.path.join(output_path, image_file), quality=90)
 
 def main(args):
-    dat_path = os.path.expanduser(args.data_path)
+    data_path = os.path.expanduser(args.data_path)
     classes_path = os.path.expanduser(args.classes_path)
     anchors_path = os.path.expanduser(args.anchors_path)
     test_path = os.path.expanduser(args.test_path)
@@ -272,10 +273,11 @@ def main(args):
     else:
         anchors = YOLO_ANCHORS
 
-    model_body, model = create_model(anchors, class_names)
+    model_body, model = create_model(anchors, class_names, False)
     images, boxes = read_directory(data_path)
+    image_data, boxes = create_training_data(images, boxes)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
-    train(model, class_names, anchors, images, boxes, detector_mask, matching_true_boxes)
+    train(model, class_names, anchors, image_data, boxes, detector_mask, matching_true_boxes)
     evaluate(model, class_names, anchors, test_path, output_path)
 
 if __name__ == '__main__':
@@ -286,19 +288,19 @@ if __name__ == '__main__':
         '-d',
         '--data_path',
         help='path to HDF5 file containing pascal voc dataset',
-        default='~/datasets/VOCdevkit/pascal_voc_07_12.hdf5')
+        default='tmp_labels2')
 
     argparser.add_argument(
         '-a',
         '--anchors_path',
         help='path to anchors file, defaults to yolo_anchors.txt',
-        default='model_data/yolo_anchors.txt')
+        default='model_data/wine_anchors.txt')
 
     argparser.add_argument(
         '-c',
         '--classes_path',
         help='path to classes file, defaults to pascal_classes.txt',
-        default='model_data/coco_classes.txt')
+        default='model_data/wine_classes.txt')
 
     argparser.add_argument(
         '-t',
