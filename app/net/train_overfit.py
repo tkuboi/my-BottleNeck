@@ -174,7 +174,7 @@ def _main(args):
     print(out_boxes)
 
     # Plot image with predicted boxes.
-    image_with_boxes = draw_boxes(image_data[0], out_boxes, out_classes,
+    image_with_boxes = draw_boxes(image, out_boxes, out_classes,
                                   class_names, out_scores)
     plt.imshow(image_with_boxes, interpolation='nearest')
     plt.show()

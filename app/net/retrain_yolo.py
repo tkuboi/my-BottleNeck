@@ -67,7 +67,7 @@ def read_images(file_path):
                 if image.size[0] > image.size[1]:
                     image = image.rotate(-90, expand=1)
                 images.append(image)
-                box = [0] + list(map(int, tokens[1:]))
+                box = [39] + list(map(int, tokens[1:]))
                 #print(box)
                 boxes.append(box)
             except:
@@ -250,13 +250,14 @@ def evaluate(model, class_names, anchors, test_path, output_path):
         out_boxes, out_scores, out_classes = yolo_eval(
             yolo_outputs,
             [image.size[1], image.size[0]],
+            max_boxes=1,
             score_threshold=.3,
             iou_threshold=.9)
 
         print('Found {} boxes for {}'.format(len(out_boxes), image_file))
 
         # Plot image with predicted boxes.
-        image_with_boxes = draw_boxes(image_data, out_boxes, out_classes,
+        image_with_boxes = draw_boxes(image, out_boxes, out_classes,
                                       class_names, out_scores, False)
         #image_with_boxes = Image.fromarray(image_with_boxes)
         image_with_boxes.save(os.path.join(output_path, image_file), quality=90)
@@ -292,7 +293,9 @@ def main(args):
     #print(images[3].size)
     #print(images[4].size)
     image_data, boxes = create_training_data(images, boxes)
+    #print(boxes)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
+    #print(matching_true_boxes)
     train(
             model, class_names, anchors, image_data,
             boxes, detector_mask, matching_true_boxes,
