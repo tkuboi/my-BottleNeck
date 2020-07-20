@@ -12,13 +12,16 @@ def read_directory(dir_path, out_dir):
         if os.path.isdir(path):
             count += read_directory(path, out_dir)
             continue
+        elif "label" in item:
+            continue
         try:
             im = Image.open(path)
             if im.size[0] > im.size[1]:
                 im = im.rotate(-90, expand=1)
             im = im.resize(DIM)
             parts = path.split("/")
-            folder = "/".join(parts[1:-1])
+            #folder = "/".join(parts[1:-1])
+            folder = parts[-2]
             out_dir_path = "%s/%s" % (out_dir, folder)
             if not os.path.exists(out_dir_path):
                 os.mkdir(out_dir_path)
