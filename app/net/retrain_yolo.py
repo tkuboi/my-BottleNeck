@@ -66,7 +66,8 @@ def read_images(file_path):
                 image = Image.open(image_name)
                 if image.size[0] > image.size[1]:
                     image = image.rotate(-90, expand=1)
-                images.append(image)
+                images.append(np.asarray(image))
+                image.close()
                 box = [39] + list(map(int, tokens[1:]))
                 #print(box)
                 boxes.append(box)
@@ -95,11 +96,13 @@ def create_training_data(images, boxes=None, **kw):
         input_image_size = kw["input_image_size"]
     else:
         input_image_size = (608, 608)
-    orig_size = np.array([images[0].width, images[0].height])
+    im = Image.fromarray(images[0])
+    orig_size = np.array([im.width, im.height])
     orig_size = np.expand_dims(orig_size, axis=0)
 
     # Image preprocessing.
-    processed_images = [i.resize(input_image_size, PIL.Image.BICUBIC) for i in images]
+    processed_images = [
+        Image.fromarray(i).resize(input_image_size, PIL.Image.BICUBIC) for i in images]
     processed_images = [np.array(image, dtype=np.float) for image in processed_images]
     processed_images = [image/255. for image in processed_images]
 
