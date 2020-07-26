@@ -162,9 +162,6 @@ def get_detector_mask(boxes, anchors):
     return np.array(detectors_mask), np.array(matching_true_boxes)
 
 def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
-    #detectors_mask_shape = (13, 13, 5, 1)
-    #matching_boxes_shape = (13, 13, 5, 5)
-
     # Create model body.
     print("CREATING TOPLESS WEIGHTS FILE")
     yolo_path = os.path.join('model_data', 'yolo.h5')
@@ -292,23 +289,17 @@ def main(args):
     learning_rate = args.learning_rate
     validation_split = args.validation_split
     is_saved_data = args.saved_data 
+    is_gpu = args.gpu
+
+    if not is_gpu:
+        tf.config.set_visible_devices([], 'GPU')
 
     if not os.path.exists(output_path):
         print('Creating output path {}'.format(output_path))
         os.mkdir(output_path)
 
-    #with open(classes_path) as f:
-    #    class_names = f.readlines()
-    #class_names = [c.strip() for c in class_names]
     class_names = get_classes(classes_path)
 
-    #if os.path.isfile(anchors_path):
-    #    with open(anchors_path) as f:
-    #        anchors = f.readline()
-    #        anchors = [float(x) for x in anchors.split(',')]
-    #        anchors = np.array(anchors).reshape(-1, 2)
-    #else:
-    #    anchors = YOLO_ANCHORS
     anchors = get_anchors(anchors_path)
 
     model = create_model(anchors, class_names, False)
@@ -399,6 +390,13 @@ if __name__ == '__main__':
         '-s',
         '--saved_data',
         help='use saved np array data',
+        action='store_true',
+        default=False)
+
+    argparser.add_argument(
+        '-g',
+        '--gpu',
+        help='use gpu',
         action='store_true',
         default=False)
 
