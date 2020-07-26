@@ -20,6 +20,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.callbacks import EarlyStopping 
+from tensorflow.keras.optimizers import Adam, Adagrad, RMSprop
 
 from yolo import (preprocess_true_boxes, yolo_body, yolo,
                                      yolo_eval, yolo_head, yolo_loss2)
@@ -90,6 +91,11 @@ def read_directory(dir_path):
             boxes += bxs
             
     return images, boxes
+
+def load_training_data(data_path):
+    image_data = np.load(os.path.join(data_path, 'x.npy'))
+    boxes = np.load(os.path.join(data_path, 'y.npy'))
+    return image_data, boxes
 
 def create_training_data(images, boxes=None, **kw):
     if "input_image_size" in kw:
@@ -184,10 +190,14 @@ def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
     return model_body
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
+    if 'learning_rate' in kw:
+        learning_rate = kw['learning_rate']
+    else:
+        learning_rate = 0.001
     if 'validation_split' in kw:
         validation_split = kw['validation_split']
     else:
-        validation_split=0.1
+        validation_split = 0.1
     if 'num_epochs' in kw:
         num_epochs = kw['num_epochs']
     else:
@@ -200,7 +210,13 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     num_classes = len(class_names)
     loss_funcs = [yolo_loss2(anchors, num_classes, mask, box)
                   for mask, box in zip(detectors_mask, matching_true_boxes)]
-    model.compile(optimizer='adam', loss=loss_funcs)
+    steps_per_epoch = image_data.shape[0] * (1.0 - validation_split) // batch_size
+    lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
+                          learning_rate,
+                          decay_steps=steps_per_epoch*100,
+                          decay_rate=1,
+                          staircase=False)
+    model.compile(optimizer=Adam(lr_schedule), loss=loss_funcs)
     logging = TensorBoard()
     checkpoint = ModelCheckpoint("yolo_v2_weights_best.h5", monitor='val_loss',
                                  save_weights_only=True, save_best_only=True)
@@ -273,36 +289,48 @@ def main(args):
     output_path = os.path.expanduser(args.output_path)
     num_epochs = args.epochs
     batch_size = args.batch_size
+    learning_rate = args.learning_rate
+    validation_split = args.validation_split
+    is_saved_data = args.saved_data 
 
     if not os.path.exists(output_path):
         print('Creating output path {}'.format(output_path))
         os.mkdir(output_path)
 
-    with open(classes_path) as f:
-        class_names = f.readlines()
-    class_names = [c.strip() for c in class_names]
+    #with open(classes_path) as f:
+    #    class_names = f.readlines()
+    #class_names = [c.strip() for c in class_names]
+    class_names = get_classes(classes_path)
 
-    if os.path.isfile(anchors_path):
-        with open(anchors_path) as f:
-            anchors = f.readline()
-            anchors = [float(x) for x in anchors.split(',')]
-            anchors = np.array(anchors).reshape(-1, 2)
-    else:
-        anchors = YOLO_ANCHORS
+    #if os.path.isfile(anchors_path):
+    #    with open(anchors_path) as f:
+    #        anchors = f.readline()
+    #        anchors = [float(x) for x in anchors.split(',')]
+    #        anchors = np.array(anchors).reshape(-1, 2)
+    #else:
+    #    anchors = YOLO_ANCHORS
+    anchors = get_anchors(anchors_path)
 
     model = create_model(anchors, class_names, False)
     model.summary()
-    images, boxes = read_directory(data_path)
     #print(images[3].size)
     #print(images[4].size)
-    image_data, boxes = create_training_data(images, boxes)
+    if is_saved_data:
+        image_data, boxes = load_training_data(data_path) 
+    else:
+        images, boxes = read_directory(data_path)
+        image_data, boxes = create_training_data(images, boxes)
+        del images
+        np.save(os.path.join(data_path, 'x.npy'), image_data)
+        np.save(os.path.join(data_path, 'y.npy'), boxes)
     #print(boxes)
     detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
     #print(matching_true_boxes)
     train(
             model, class_names, anchors, image_data,
             boxes, detector_mask, matching_true_boxes,
-            num_epochs=num_epochs, batch_size=batch_size)
+            num_epochs=num_epochs, batch_size=batch_size,
+            learning_rate=learning_rate, validation_split=validation_split)
     evaluate(model, class_names, anchors, test_path, output_path)
 
 if __name__ == '__main__':
@@ -352,6 +380,27 @@ if __name__ == '__main__':
         help='the batch size',
         type=int,
         default=8)
+
+    argparser.add_argument(
+        '-l',
+        '--learning_rate',
+        help='the learning rate',
+        type=float,
+        default=0.001)
+
+    argparser.add_argument(
+        '-v',
+        '--validation_split',
+        help='the validation split',
+        type=float,
+        default=0.1)
+
+    argparser.add_argument(
+        '-s',
+        '--saved_data',
+        help='use saved np array data',
+        action='store_true',
+        default=False)
 
     args = argparser.parse_args()
     main(args)
