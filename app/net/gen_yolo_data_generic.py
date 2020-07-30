@@ -16,12 +16,21 @@ from yolo import preprocess_true_boxes
 
 from compute_anchors import get_boxes
 
+IMAGE_EXTENSIONS = ['.png', '.jpeg', '.jpg']
+
 def get_classes(classes_path):
     '''loads the classes'''
     with open(classes_path) as f:
         class_names = f.readlines()
     class_names = [c.strip() for c in class_names]
     return class_names
+
+def get_anchors(anchors_path):
+    '''loads the anchors from a file'''
+    with open(anchors_path) as f:
+        anchors = f.readline()
+        anchors = [float(x) for x in anchors.split(',')]
+        return np.array(anchors).reshape(-1, 2)
 
 def read_image(file_path):
     """read images from a file
@@ -30,14 +39,11 @@ def read_image(file_path):
     Returns:
         list: an Image object as numpy array
     """
-    try:
-        image = Image.open(file_path)
-        if image.size[0] > image.size[1]:
-            image = image.rotate(-90, expand=1)
-        im_array = np.asarray(image))
-        image.close()
-    except:
-        traceback.print_exc(file=sys.stdout)
+    image = Image.open(file_path)
+    if image.size[0] > image.size[1]:
+        image = image.rotate(-90, expand=1)
+    im_array = np.asarray(image)
+    image.close()
     return im_array
 
 def read_directory(dir_path):
@@ -51,19 +57,25 @@ def read_directory(dir_path):
             boxes += bxs
         else:
             path_name, ext = os.path.splitext(path)
-            if ext in IMAGE_EXTENSIONS:
-                image = read_image(path)
-                images.append(image)
-                bxs += get_boxes(os.path.join(path_name, '.txt'))
-                boxes += scale_boxes(bxs, image.shape)
+            if ext.lower() in IMAGE_EXTENSIONS and 'label' not in item:
+                try:
+                    image = read_image(path)
+                    bxs = get_boxes(path_name+'.txt')
+                    boxes.append(scale_boxes(bxs, image.shape))
+                    images.append(image)
+                except:
+                    traceback.print_exc(file=sys.stdout)
 
     return images, boxes
 
 def scale_boxes(boxes, hwc, default_class=39):
-    boxes = boxes * np.array([1, hwc[1], hwc[0], hwc[1], hwc[0]])
+    scaler = np.array([1, hwc[1], hwc[0], hwc[1], hwc[0]])
+    boxes = boxes * scaler 
+    print(boxes)
     for box in boxes:
+        box[0] = default_class
         box[1] = box[1] - box[3] / 2
-        box[2] = box[1] - box[4] / 2
+        box[2] = box[2] - box[4] / 2
         box[3] += box[1]
         box[4] += box[2]
     return boxes
@@ -119,11 +131,13 @@ def create_training_data(images, boxes=None, **kw):
 def main(args):
     data_path = os.path.expanduser(args.data_path)
     classes_path = os.path.expanduser(args.classes_path)
+
     image_wh = args.image_wh
 
     class_names = get_classes(classes_path)
 
     images, boxes = read_directory(data_path)
+
     image_data, boxes = create_training_data(
             images, boxes, input_image_size=(image_wh, image_wh))
     del images

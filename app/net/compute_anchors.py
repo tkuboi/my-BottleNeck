@@ -26,7 +26,7 @@ def get_boxes(path):
     with open(path) as lines:
         for line in lines:
             tokens = line.split()
-            boxes.append([float(tokens[3]), float(tokens[4])])
+            boxes.append([float(x) for x in tokens])
     return boxes[:1]
 
 def get_anchors(boxes, num_anchors):
@@ -48,7 +48,7 @@ def main(args):
     num_anchors = args.num_anchors
     is_save = args.save_results
     boxes = read_directory(dir_path)
-    anchors = get_anchors(boxes, num_anchors)
+    anchors = get_anchors([[box[3], box[4]] for box in boxes], num_anchors)
     print("Anchors:")
     print(anchors)
     if is_save:
