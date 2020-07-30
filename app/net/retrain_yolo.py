@@ -37,115 +37,26 @@ def get_classes(classes_path):
     class_names = [c.strip() for c in class_names]
     return class_names
 
-def get_anchors(anchors_path):
+def get_anchors(anchors_path, is_proportional=False, image_wh=608):
     '''loads the anchors from a file'''
     if os.path.isfile(anchors_path):
         with open(anchors_path) as f:
             anchors = f.readline()
+        if is_proportional:
+            anchors = [float(x) * image_wh / 32 for x in anchors.split(',')]
+        else:
             anchors = [float(x) for x in anchors.split(',')]
-            return np.array(anchors).reshape(-1, 2)
+        return np.array(anchors).reshape(-1, 2)
     else:
         Warning("Could not open anchors file, using default.")
         return YOLO_ANCHORS
-
-def read_images(file_path):
-    """read images from a file
-    Args:
-        file_path (str): the path to a file
-    Returns:
-        list: a list of Image objects
-        list: a list of bounding boxes
-    """
-    images = []
-    boxes = []
-    dir_path = os.path.dirname(file_path) 
-    with open(file_path) as f:
-        for line in f:
-            try:
-                tokens = line.split("\t")
-                image_name = os.path.join(dir_path, tokens[0])
-                image = Image.open(image_name)
-                if image.size[0] > image.size[1]:
-                    image = image.rotate(-90, expand=1)
-                images.append(np.asarray(image))
-                image.close()
-                box = [39] + list(map(int, tokens[1:]))
-                #print(box)
-                boxes.append(box)
-            except:
-                traceback.print_exc(file=sys.stdout)
-    return images, boxes 
-
-def read_directory(dir_path):
-    images = []
-    boxes = []
-    for item in os.listdir(dir_path):
-        path = os.path.join(dir_path, item)
-        if os.path.isdir(path):
-            ims, bxs = read_directory(path)
-            images += ims
-            boxes += bxs
-        elif "coordinates" in item:
-            ims, bxs = read_images(path)
-            images += ims
-            boxes += bxs
-            
-    return images, boxes
 
 def load_training_data(data_path):
     image_data = np.load(os.path.join(data_path, 'x.npy'))
     boxes = np.load(os.path.join(data_path, 'y.npy'))
     return image_data, boxes
 
-def create_training_data(images, boxes=None, **kw):
-    if "input_image_size" in kw:
-        input_image_size = kw["input_image_size"]
-    else:
-        input_image_size = (608, 608)
-    im = Image.fromarray(images[0])
-    orig_size = np.array([im.width, im.height])
-    orig_size = np.expand_dims(orig_size, axis=0)
-
-    # Image preprocessing.
-    processed_images = [
-        Image.fromarray(i).resize(input_image_size, PIL.Image.BICUBIC) for i in images]
-    processed_images = [np.array(image, dtype=np.float) for image in processed_images]
-    processed_images = [image/255. for image in processed_images]
-
-    if boxes is not None:
-        # Box preprocessing.
-        # Original boxes stored as 1D list of class, x_min, y_min, x_max, y_max.
-        boxes = [np.array(box).reshape((-1, 5)) for box in boxes]
-        # Get extents as y_min, x_min, y_max, x_max, class for comparision with
-        # model output.
-        boxes_extents = [box[:, [2, 1, 4, 3, 0]] for box in boxes]
-
-        # Get box parameters as x_center, y_center, box_width, box_height, class.
-        boxes_xy = [0.5 * (box[:, 3:5] + box[:, 1:3]) for box in boxes]
-        boxes_wh = [box[:, 3:5] - box[:, 1:3] for box in boxes]
-        boxes_xy = [boxxy / orig_size for boxxy in boxes_xy]
-        boxes_wh = [boxwh / orig_size for boxwh in boxes_wh]
-        boxes = [
-            np.concatenate((boxes_xy[i], boxes_wh[i], box[:, 0:1]), axis=1)
-            for i, box in enumerate(boxes)]
-
-        # find the max number of boxes
-        max_boxes = 0
-        for boxz in boxes:
-            if boxz.shape[0] > max_boxes:
-                max_boxes = boxz.shape[0]
-
-        # add zero pad for training
-        for i, boxz in enumerate(boxes):
-            if boxz.shape[0]  < max_boxes:
-                zero_padding = np.zeros( (max_boxes-boxz.shape[0], 5), dtype=np.float32)
-                boxes[i] = np.vstack((boxz, zero_padding))
-
-        return np.array(processed_images), np.array(boxes)
-    else:
-        return np.array(processed_images)
-
-def get_detector_mask(boxes, anchors):
+def get_detector_mask(boxes, anchors, image_wh=608):
     '''
     Precompute detectors_mask and matching_true_boxes for training.
     Detectors mask is 1 for each spatial position in the final conv layer and
@@ -157,34 +68,45 @@ def get_detector_mask(boxes, anchors):
     matching_true_boxes = [0 for i in range(len(boxes))]
     for i, box in enumerate(boxes):
         detectors_mask[i], matching_true_boxes[i] =\
-            preprocess_true_boxes(box, anchors, [608, 608])
+            preprocess_true_boxes(box, anchors, [image_wh, image_wh])
 
     return np.array(detectors_mask), np.array(matching_true_boxes)
 
-def create_model(anchors, class_names, load_pretrained=True, freeze_body=True):
+def create_model(model_path, anchors, class_names, **kw):
+    if 'weights_path' in kw:
+        weights_path = kw['weights_path']
+        load_saved_weights = True if weights_path else False
+    else:
+        load_saved_weights = False
+        weights_path = None
+    if 'freeze_body' in kw:
+        freeze_body = kw['freeze_body']
+    else:
+        freeze_body = True
+    #not currently used
+    if 'input_shape' in kw:
+        input_shape = kw['input_shape']
+    else:
+        input_shape = (608, 608, 3)
     # Create model body.
     print("CREATING TOPLESS WEIGHTS FILE")
-    yolo_path = os.path.join('model_data', 'yolo.h5')
-    topless_yolo_path = os.path.join('model_data', 'yolo_topless.h5')
-    model_body = load_model(yolo_path)
-    #model_body.summary()
+    model_body = load_model(model_path)
     topless_yolo = Model(model_body.inputs, model_body.layers[-2].output)
-    #topless_yolo.summary()
-    if load_pretrained:
-        topless_yolo.load_weights(topless_yolo_path)
-    topless_yolo.save_weights(topless_yolo_path)
 
     if freeze_body:
         for layer in topless_yolo.layers:
             layer.trainable = False
+
     final_layer = Conv2D(
             len(anchors)*(5+len(class_names)), (1, 1),
             activation='linear', name='conv2d_final'
         )(topless_yolo.output)
 
-    model_body = Model(topless_yolo.inputs, final_layer)
-    #model = yolo(model_body, anchors, len(class_names))
-    return model_body
+    model = Model(topless_yolo.inputs, final_layer)
+    if load_saved_weights:
+        model.load_weights(weights_path)
+
+    return model
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
     if 'learning_rate' in kw:
@@ -215,20 +137,28 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
                           staircase=False)
     model.compile(optimizer=Adam(lr_schedule), loss=loss_funcs)
     logging = TensorBoard()
-    checkpoint = ModelCheckpoint("yolo_v2_weights_best.h5", monitor='val_loss',
+    checkpoint_path = "model_data/yolo_v2_%d_weights_ep{epoch:02d}_BS%d_best.h5" % (
+                        image_data.shape[1],
+                        batch_size)
+    checkpoint = ModelCheckpoint(checkpoint_path,
+                                 monitor='val_loss',
                                  save_weights_only=True, save_best_only=True)
     early_stopping = EarlyStopping(
         monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
 
     #print(image_data.shape)
     #print(boxes.shape)
-    model.fit(image_data, boxes,
-              validation_split=validation_split,
-              batch_size=batch_size,
-              epochs=num_epochs,
-              callbacks=[logging, checkpoint, early_stopping])
-
-    model.save_weights('yolo_v2_weights_ep%02d_BS%d.h5' % (num_epochs, batch_size))
+    history = model.fit(
+                image_data, boxes,
+                validation_split=validation_split,
+                batch_size=batch_size,
+                epochs=num_epochs,
+                callbacks=[logging, checkpoint, early_stopping])
+   
+    model.save('model_data/yolo_body_v2_%d.h5' % (image_data.shape[1]))
+    model.save_weights('model_data/yolo_v2_%d_weights_ep%02d_BS%d_vloss%s.h5' % (
+        image_data.shape[1], num_epochs, batch_size,
+        ('%0.5f' % history.history['val_loss'][0]).replace('.', '_')))
 
 def evaluate(model, class_names, anchors, test_path, output_path):
     # Create output variables for prediction.
@@ -279,17 +209,20 @@ def evaluate(model, class_names, anchors, test_path, output_path):
         image_with_boxes.save(os.path.join(output_path, image_file), quality=90)
 
 def main(args):
+    model_path = os.path.expanduser(args.model_path)
     data_path = os.path.expanduser(args.data_path)
     classes_path = os.path.expanduser(args.classes_path)
     anchors_path = os.path.expanduser(args.anchors_path)
+    weights_path = os.path.expanduser(args.weights_path)
     test_path = os.path.expanduser(args.test_path)
     output_path = os.path.expanduser(args.output_path)
     num_epochs = args.epochs
     batch_size = args.batch_size
     learning_rate = args.learning_rate
     validation_split = args.validation_split
-    is_saved_data = args.saved_data 
+    image_wh = args.input_dimension
     is_gpu = args.gpu
+    is_proportional_anchor = args.proportional_anchor
 
     if not is_gpu:
         tf.config.set_visible_devices([], 'GPU')
@@ -300,22 +233,16 @@ def main(args):
 
     class_names = get_classes(classes_path)
 
-    anchors = get_anchors(anchors_path)
-
-    model = create_model(anchors, class_names, False)
+    anchors = get_anchors(anchors_path, is_proportional_anchor, image_wh)
+    model = create_model(
+            model_path, anchors, class_names,
+            weights_path=weights_path, input_shape=(image_wh, image_wh, 3))
     model.summary()
     #print(images[3].size)
     #print(images[4].size)
-    if is_saved_data:
-        image_data, boxes = load_training_data(data_path) 
-    else:
-        images, boxes = read_directory(data_path)
-        image_data, boxes = create_training_data(images, boxes)
-        del images
-        np.save(os.path.join(data_path, 'x.npy'), image_data)
-        np.save(os.path.join(data_path, 'y.npy'), boxes)
+    image_data, boxes = load_training_data(data_path) 
     #print(boxes)
-    detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors)
+    detector_mask, matching_true_boxes = get_detector_mask(boxes, anchors, image_wh)
     #print(matching_true_boxes)
     train(
             model, class_names, anchors, image_data,
@@ -329,10 +256,16 @@ if __name__ == '__main__':
     description='Train YOLO_v2 model to overfit on a single image.')
 
     argparser.add_argument(
+        '-m',
+        '--model_path',
+        help='path to HDF5 file containing a yolo model and weights',
+        default='model_data/yolo.h5')
+
+    argparser.add_argument(
         '-d',
         '--data_path',
-        help='path to HDF5 file containing pascal voc dataset',
-        default='tmp_labels2')
+        help='path to a directory containing numpy arrays (X and Y) of training dataset',
+        default='model_data/')
 
     argparser.add_argument(
         '-a',
@@ -345,6 +278,12 @@ if __name__ == '__main__':
         '--classes_path',
         help='path to classes file, defaults to pascal_classes.txt',
         default='model_data/coco_classes.txt')
+
+    argparser.add_argument(
+        '-w',
+        '--weights_path',
+        help='path to previously trained yolo weights',
+        default='')
 
     argparser.add_argument(
         '-t',
@@ -387,18 +326,25 @@ if __name__ == '__main__':
         default=0.1)
 
     argparser.add_argument(
-        '-s',
-        '--saved_data',
-        help='use saved np array data',
-        action='store_true',
-        default=False)
-
-    argparser.add_argument(
         '-g',
         '--gpu',
         help='use gpu',
         action='store_true',
         default=False)
+
+    argparser.add_argument(
+        '-p',
+        '--proportional_anchor',
+        help='the anchors are proportional number between 0 and 1.0.',
+        action='store_true',
+        default=False)
+
+    argparser.add_argument(
+        '-i',
+        '--input_dimension',
+        type=int,
+        help='input image shape',
+        default=608)
 
     args = argparser.parse_args()
     main(args)
