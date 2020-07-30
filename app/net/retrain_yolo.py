@@ -125,6 +125,14 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
         batch_size = kw['batch_size']
     else:
         batch_size = 8
+    if 'decay_rate' in kw:
+        decay_rate = kw['decay_rate']
+    else:
+        decay_rate = 1.0 
+    if 'decay_steps' in kw:
+        decay_steps = kw['decay_steps']
+    else:
+        decay_steps = 100
 
     num_classes = len(class_names)
     loss_funcs = [yolo_loss2(anchors, num_classes, mask, box)
@@ -132,8 +140,8 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
     steps_per_epoch = image_data.shape[0] * (1.0 - validation_split) // batch_size
     lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                           learning_rate,
-                          decay_steps=steps_per_epoch*100,
-                          decay_rate=1,
+                          decay_steps=steps_per_epoch*decay_steps,
+                          decay_rate=decay_rate,
                           staircase=False)
     model.compile(optimizer=Adam(lr_schedule), loss=loss_funcs)
     logging = TensorBoard()
@@ -219,6 +227,8 @@ def main(args):
     num_epochs = args.epochs
     batch_size = args.batch_size
     learning_rate = args.learning_rate
+    decay_rate = args.decay_rate
+    decay_steps = args.decay_steps
     validation_split = args.validation_split
     image_wh = args.input_dimension
     is_gpu = args.gpu
@@ -248,7 +258,10 @@ def main(args):
             model, class_names, anchors, image_data,
             boxes, detector_mask, matching_true_boxes,
             num_epochs=num_epochs, batch_size=batch_size,
-            learning_rate=learning_rate, validation_split=validation_split)
+            learning_rate=learning_rate,
+            decay_rate=decay_rate,
+            decay_steps=decay_steps,
+            validation_split=validation_split)
     evaluate(model, class_names, anchors, test_path, output_path)
 
 if __name__ == '__main__':
@@ -317,6 +330,20 @@ if __name__ == '__main__':
         help='the learning rate',
         type=float,
         default=0.001)
+
+    argparser.add_argument(
+        '-dr',
+        '--decay_rate',
+        help='the decay rate',
+        type=float,
+        default=0.5)
+
+    argparser.add_argument(
+        '-ds',
+        '--decay_steps',
+        help='the decay steps',
+        type=int,
+        default=100)
 
     argparser.add_argument(
         '-v',
