@@ -106,6 +106,7 @@ def create_model(model_path, anchors, class_names, **kw):
     if load_saved_weights:
         model.load_weights(weights_path)
 
+    model.save('model_data/yolo_body_v2_%d.h5' % (model.layers[0]._batch_input_shape[1]))
     return model
 
 def train(model, class_names, anchors, image_data, boxes, detectors_mask, matching_true_boxes, **kw):
@@ -163,7 +164,6 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
                 epochs=num_epochs,
                 callbacks=[logging, checkpoint, early_stopping])
    
-    model.save('model_data/yolo_body_v2_%d.h5' % (image_data.shape[1]))
     model.save_weights('model_data/yolo_v2_%d_weights_ep%02d_BS%d_vloss%s.h5' % (
         image_data.shape[1], num_epochs, batch_size,
         ('%0.5f' % history.history['val_loss'][0]).replace('.', '_')))

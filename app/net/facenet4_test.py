@@ -49,3 +49,5 @@ if __name__ == "__main__":
     wines = pickle.load(open(pickle_file, 'rb'))
     results = get_neighbors(embeddings, y_train, tests, y_test, 10)
     print_results(results, y_test, wines)
+    np.save('sample_wine_embeddings.npy', embeddings)
+    np.save('sample_wine_ids.npy', y_train)
