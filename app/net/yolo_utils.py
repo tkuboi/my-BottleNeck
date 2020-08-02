@@ -1,3 +1,4 @@
+import os
 import colorsys
 import random
 
@@ -38,9 +39,9 @@ def draw_boxes(image, boxes, box_classes, class_names, scores=None, as_array=Tru
         A copy of `image` modified with given bounding boxes.
     """
     #image = Image.fromarray(np.floor(image * 255 + 0.5).astype('uint8'))
-
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     font = ImageFont.truetype(
-        font='font/FiraMono-Medium.otf',
+        font=os.path.join(base_dir, 'font/FiraMono-Medium.otf'),
         size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
     thickness = (image.size[0] + image.size[1]) // 300
 

@@ -1,5 +1,5 @@
 #
-
+import os
 import sys
 
 import numpy as np
@@ -9,6 +9,7 @@ from tensorflow.keras.layers import Lambda
 from tensorflow.keras.layers import Concatenate
 from tensorflow.keras.models import Model
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import compose
 from darknet19 import (DarknetConv2D, DarknetConv2D_BN_Leaky,
                               darknet_body)
