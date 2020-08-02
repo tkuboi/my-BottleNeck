@@ -5,6 +5,61 @@ import random
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+YOLO_ANCHORS = np.array(
+    ((0.57273, 0.677385), (1.87446, 2.06253), (3.33843, 5.47434),
+     (7.88282, 3.52778), (9.77052, 9.16828)))
+
+def get_classes(classes_path):
+    '''loads the classes'''
+    with open(classes_path) as f:
+        class_names = f.readlines()
+    class_names = [c.strip() for c in class_names]
+    return class_names
+
+def get_anchors(anchors_path, is_proportional=False, image_wh=608):
+    '''loads the anchors from a file'''
+    if os.path.isfile(anchors_path):
+        with open(anchors_path) as f:
+            anchors = f.readline()
+        if is_proportional:
+            anchors = [float(x) * image_wh / 32 for x in anchors.split(',')]
+        else:
+            anchors = [float(x) for x in anchors.split(',')]
+        return np.array(anchors).reshape(-1, 2)
+    else:
+        Warning("Could not open anchors file, using default.")
+        return YOLO_ANCHORS
+
+def resize_boundingboxes(out_boxes, image_size):
+    boxes = []
+    for out_box in out_boxes:
+        top, left, bottom, right = out_box
+        top = max(0, np.floor(top).astype('int32'))
+        left = max(0, np.floor(left).astype('int32'))
+        bottom = min(image_size[1], np.floor(bottom).astype('int32'))
+        right = min(image_size[0], np.floor(right).astype('int32'))
+        print(top, left, bottom, right)
+        width = (right - left)
+        height = (bottom - top)
+        c_x = left + width // 2
+        c_y = top + height // 2
+        if width // 3  >= height // 4:
+            width = int(width)
+            height = width * 4 // 3
+        else:
+            height = int(height)
+            width = height * 3 // 4
+        box = (c_y - height // 2, c_x - width // 2, c_y + height // 2, c_x + width // 2)
+        boxes.append(box)
+    return boxes
+
+def preprocess_image(image, model_image_shape):
+    resized_image = image.resize(
+            tuple(reversed(model_image_shape)), Image.BICUBIC)
+    image_data = np.array(resized_image, dtype='float32')
+    image_data /= 255.
+    image_input = np.expand_dims(image_data, 0)  # Add batch dimension.
+    return image_input
 
 def get_colors_for_classes(num_classes):
     """Return list of random colors for number of classes given."""
