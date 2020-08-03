@@ -21,7 +21,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from yolo import yolo
 from yolo import yolo_eval
 from yolo_utils import draw_boxes, preprocess_image, resize_boundingboxes, get_anchors, get_classes
-#from retrain_yolo import get_classes, get_anchors
 from utils import to_np
 
 class WineRecognizer:
