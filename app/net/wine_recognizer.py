@@ -20,8 +20,8 @@ from tensorflow.keras.models import load_model
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from yolo import yolo
 from yolo import yolo_eval
-from yolo_utils import draw_boxes
-from retrain_yolo import get_classes, get_anchors
+from yolo_utils import draw_boxes, preprocess_image, resize_boundingboxes, get_anchors, get_classes
+#from retrain_yolo import get_classes, get_anchors
 from utils import to_np
 
 class WineRecognizer:
@@ -107,17 +107,18 @@ class WineRecognizer:
             score_threshold=self.score_threshold,
             iou_threshold=self.iou_threshold)
 
-        bounding_boxes = adjust_boundingbox(out_boxes, image.size)
+        bounding_boxes = resize_boundingboxes(out_boxes, image.size)
         if len(bounding_boxes) == 0:
             return None, None
         # Plot image with predicted boxes.
         image_with_boxes = draw_boxes(image.copy(), bounding_boxes, out_classes,
                                       self.classes, out_scores, False)
         image_file = os.path.basename(file_path)
+        name, ext = os.path.splitext(image_file)
         image_with_boxes.save(os.path.join(self.out_path, image_file), quality=90)
         bounding_box = bounding_boxes[0]
         cropped = image.crop((bounding_box[1], bounding_box[0], bounding_box[3], bounding_box[2]))
-        cropped.save(os.path.join(self.out_path, 'cropped.JPG'))
+        cropped.save(os.path.join(self.out_path, name+'_cropped'+ext))
         wines = self.recognize(cropped)
         return wines, [int(bounding_box[1]),
                        int(bounding_box[0]),
@@ -136,37 +137,6 @@ class WineRecognizer:
         #print(neighbors)
         results = map_wines(neighbors[0], self.wines_dict)
         return results
-
-def preprocess_image(image, model_image_shape):
-    resized_image = image.resize(
-            tuple(reversed(model_image_shape)), Image.BICUBIC)
-    image_data = np.array(resized_image, dtype='float32')
-    image_data /= 255.
-    image_input = np.expand_dims(image_data, 0)  # Add batch dimension.
-    return image_input
-
-def adjust_boundingbox(out_boxes, image_size):
-    boxes = [] 
-    for out_box in out_boxes:
-        top, left, bottom, right = out_box
-        top = max(0, np.floor(top).astype('int32'))
-        left = max(0, np.floor(left).astype('int32'))
-        bottom = min(image_size[1], np.floor(bottom).astype('int32'))
-        right = min(image_size[0], np.floor(right).astype('int32'))
-        print(top, left, bottom, right)
-        width = (right - left)
-        height = (bottom - top)
-        c_x = left + width // 2
-        c_y = top + height // 2
-        if width // 3  >= height // 4:
-            width = int(width)
-            height = width * 4 // 3
-        else:
-            height = int(height)
-            width = height * 3 // 4
-        box = (c_y - height // 2, c_x - width // 2, c_y + height // 2, c_x + width // 2)
-        boxes.append(box)
-    return boxes
 
 def get_dists(embeddings, test):
     dists = [None] * len(embeddings)
@@ -204,7 +174,7 @@ def map_wines(neighbors, wines):
 if __name__ == '__main__':
     recognizer = WineRecognizer('recognizer.cfg')
     recognizer.load_models()
-    results, box = recognizer.predict('images/bottle3.JPG')
+    results, box = recognizer.predict('dataset/id_483_img.png')
     for result in results:
         print(result)
 

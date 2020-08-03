@@ -57,6 +57,7 @@ def preprocess_image(image, model_image_shape):
     resized_image = image.resize(
             tuple(reversed(model_image_shape)), Image.BICUBIC)
     image_data = np.array(resized_image, dtype='float32')
+    image_data = image_data[:, :, :3]
     image_data /= 255.
     image_input = np.expand_dims(image_data, 0)  # Add batch dimension.
     return image_input
