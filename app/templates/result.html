@@ -1,29 +1,40 @@
-<img id='bottle' src="/static/uploaded/{{ filename }}" width="240" height="320">
+<img id='bottle' src="/static/uploaded/{{ filename }}">
 <canvas id="myCanvas" width="240" height="320" ></canvas>
 <div>
     <p>
+    {% if wines is not none %}
+    The wine is probably one of :
     <ol>
     {% for wine in wines %}
     <li>{{ wine[1][0] }}, {{ wine[1][1] }}</li>
     {% endfor %}
     </ol>
+    {% else %}
+    No matching wines found.
+    {% endif %}
     </p>
 </div>
 <a href="{{ url_for('.upload_file')  }}">go back</a>
     <script>
         var box = {{ box }};
         window.onload = function() {
-  var c=document.getElementById("myCanvas");
-  var ctx=c.getContext("2d");
-  var img=document.getElementById("bottle");  
-  ctx.drawImage(img,0,0, 240, 320);  
-  var canvas = document.getElementById('myCanvas');
-  var context = canvas.getContext('2d');
-
-  context.beginPath();
-  context.rect(box[0], box[1], box[2]-box[0], box[3]-box[1]);
-  context.lineWidth = 3;
-  context.strokeStyle = 'red';
-  context.stroke();
+        var c=document.getElementById("myCanvas");
+        var ctx=c.getContext("2d");
+        var img=document.getElementById("bottle");  
+        var width = img.clientWidth;
+        var height = img.clientHeight;
+        ctx.drawImage(img,0,0, 240, 320);
+        var wScale = 240 / width;
+        var hScale = 320 / height;
+        var canvas = document.getElementById('myCanvas');
+        var context = canvas.getContext('2d');
+        img.style.display = 'none';
+        if (box) {
+          context.beginPath();
+          context.rect(box[0] * wScale, box[1] * hScale, (box[2]-box[0]) * wScale, (box[3]-box[1]) * hScale);
+          context.lineWidth = 3;
+          context.strokeStyle = 'red';
+          context.stroke();
+        }
 }
     </script>

@@ -39,5 +39,5 @@ def upload_file():
 def uploaded_file(filename):
     imagefile_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
     wines, box = recognizer.predict(imagefile_path)
-    return render_template('result.html', filename=filename, wines=wines, box=box)
+    return render_template('result.html', filename=filename, wines=wines, box=box if box else [])
     #return redirect(url_for('static/uploaded', filename=filename))
