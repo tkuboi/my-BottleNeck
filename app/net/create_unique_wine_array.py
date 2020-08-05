@@ -35,7 +35,7 @@ def read_directory(dir_path, dim, num_per_wine=10):
             try:
                 img = Image.open(item_path)
                 if img.size[0] > img.size[1]:
-                    img = img.rotate(-90)
+                    img = img.rotate(-90, expand=1)
                 img = img.resize(dim)
                 image_data = to_np(img, dim)
                 x.append(image_data)

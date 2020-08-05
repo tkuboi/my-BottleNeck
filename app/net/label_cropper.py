@@ -44,7 +44,7 @@ class LabelCropper:
     def crop_label(self, file_path):
         image = Image.open(file_path)
         if image.size[0] > image.size[1]:
-            image = image.rotate(-90)
+            image = image.rotate(-90, expand=1)
         image_input = preprocess_image(image, [self.input_dimension, self.input_dimension])
         yolo_outputs = self.detector(image_input)
         out_boxes, out_scores, out_classes = yolo_eval(
@@ -74,8 +74,10 @@ class LabelCropper:
                 try:
                     label = self.crop_label(item_path)
                     if label:
+                        base_dir = os.path.basename(in_dir)
+                        parts = base_dir.split('_')
                         out_dir_path = LabelCropper.check_outdir(
-                                os.path.join(out_dir, os.path.basename(in_dir)))
+                                os.path.join(out_dir, parts[0]))
                         label.save(os.path.join(out_dir_path, name + '_label.jpg'))
                         count += 1
                 except:
