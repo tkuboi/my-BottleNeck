@@ -34,10 +34,10 @@ def resize_boundingboxes(out_boxes, image_size):
     boxes = []
     for out_box in out_boxes:
         top, left, bottom, right = out_box
-        top = max(0, np.floor(top).astype('int32'))
-        left = max(0, np.floor(left).astype('int32'))
-        bottom = min(image_size[1], np.floor(bottom).astype('int32'))
-        right = min(image_size[0], np.floor(right).astype('int32'))
+        top = np.floor(top).astype('int32')
+        left = np.floor(left).astype('int32')
+        bottom = np.floor(bottom).astype('int32')
+        right = np.floor(right).astype('int32')
         print(top, left, bottom, right)
         width = (right - left)
         height = (bottom - top)
@@ -49,7 +49,11 @@ def resize_boundingboxes(out_boxes, image_size):
         else:
             height = int(height)
             width = height * 3 // 4
-        box = (c_y - height // 2, c_x - width // 2, c_y + height // 2, c_x + width // 2)
+        top = max(0, c_y - height // 2)
+        left = max(0, c_x - width // 2)
+        bottom = min(image_size[1], c_y + height // 2)
+        right = min(image_size[0], c_x + width // 2)
+        box = (top, left, bottom, right)
         boxes.append(box)
     return boxes
 
