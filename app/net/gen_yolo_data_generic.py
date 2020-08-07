@@ -146,7 +146,7 @@ def main(args):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(
-    description='Generate YOLO training data from a proprietrary corrdinates file.')
+    description='Generate YOLO training data from a generic corrdinates file.')
 
     argparser.add_argument(
         '-d',
