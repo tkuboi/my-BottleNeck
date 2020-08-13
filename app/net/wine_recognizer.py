@@ -96,7 +96,7 @@ class WineRecognizer:
     def predict(self, file_path):
         image = Image.open(file_path)
         if image.size[0] > image.size[1]:
-            image = image.rotate(-90)
+            image = image.rotate(-90, expand=1)
         image_input = preprocess_image(image, [self.input_dimension, self.input_dimension])
         yolo_outputs = self.detector(image_input)
         out_boxes, out_scores, out_classes = yolo_eval(
