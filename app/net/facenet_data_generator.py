@@ -86,16 +86,17 @@ def get_generator(in_dir, wines_dict, batch_size=32):
 
 def main():
     if len(sys.argv) < 6:
-        print("Usage: <in_dir> <wines_pkl_path> <out_dir> <batch> <epoch>")
+        print("Usage: <in_dir> <wines_pkl_path> <out_dir> <batch> <epoch> <is_winery>")
         exit()
     in_dir = sys.argv[1]
     wines_pkl_path = sys.argv[2]
     out_dir = sys.argv[3]
     batch = int(sys.argv[4])
     epoch = int(sys.argv[5])
+    is_winery = True if len(sys.argv) >= 7 else False
     wines_dict = pickle.load(open(wines_pkl_path, 'rb'))
     #print(wines_dict)
-    data_generator = get_generator(in_dir, wines_dict, batch)(True)
+    data_generator = get_generator(in_dir, wines_dict, batch)(is_winery)
     X = []
     Y = []
     for i in range(epoch):
