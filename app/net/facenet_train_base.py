@@ -72,13 +72,13 @@ def train_body(model,
     return model
 
 def create_model_body(base_model_path=None, base_weights_path=None, 
-                      model_path=None, weights_path=None, freeze=True):
+                      model_path=None, weights_path=None, freeze_layers=10):
     if model_path:
         model = load_model(model_path)
         if weights_path:
             model.load_weights(weights_path)
-        if freeze:
-            for layer in model.layers[:10]:
+        if freeze_layers:
+            for layer in model.layers[:freeze_layers]:
                 layer.trainable = False
     else: 
         base_model = load_model(base_model_path)
@@ -89,7 +89,7 @@ def create_model_body(base_model_path=None, base_weights_path=None,
                 layer.trainable = False
         body_output = inception_model(topless_base.output)
         model = Model(topless_base.inputs, body_output)
-        model.save('saved_model/facenet_v5_model')
+    model.save('saved_model/facenet_v5_model')
     model.summary()
     plot_model(model, to_file='inception_network.png', show_shapes=True, show_layer_names=True)
     return model
@@ -220,7 +220,8 @@ def main(args):
     decay_rate = args.decay_rate
     decay_steps = args.decay_steps
     dim = (args.input_width, args.input_height)
-    embedding_size = args.embedding_size 
+    embedding_size = args.embedding_size
+    freeze_layers = args.freeze_layers
     is_base_training = args.base_training_flag 
     is_base_testing = args.base_testing_flag 
     is_gpu = args.gpu
@@ -262,7 +263,7 @@ def main(args):
     else:
         before = create_model_body(
                     base_model_path=base_model_path, base_weights_path=base_weights_path,
-                    model_path=model_path, weights_path=weights_path, freeze=True)
+                    model_path=model_path, weights_path=weights_path, freeze_layers=freeze_layers)
         model = train_body(before,
                input_image_shape=input_image_shape, embedding_size=embedding_size,
                batch_size=batch_size, epochs=epochs, lr=learning_rate, decay_rate=decay_rate,
@@ -359,6 +360,13 @@ if __name__ == "__main__":
         type=int,
         help='embedding size',
         default=128)
+
+    argparser.add_argument(
+        '-f',
+        '--freeze_layers',
+        type=int,
+        help='the number of layers to be freezed',
+        default=10)
 
     argparser.add_argument(
         '-btr',

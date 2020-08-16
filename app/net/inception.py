@@ -200,8 +200,9 @@ def whole_model(image_input_shape, embedding_size):
     x = inception_block_4e(x)
     x = inception_block_5a(x)
     x = inception_block_5b(x)
-    x = AveragePooling2D(pool_size=(1, 1), strides=1)(x)
+    #x = AveragePooling2D(pool_size=(1, 1), strides=1)(x)
     x = Flatten()(x)
     x = Dense(embedding_size, activation=None)(x)
+    x = inception_l2_normalize()(x)
     model = Model(inputs=input_image, outputs=x)
-    return model 
+    return model
