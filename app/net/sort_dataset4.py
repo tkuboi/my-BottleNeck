@@ -18,7 +18,7 @@ def import_images(dir_path, dim, out_dir):
             import_images(path, dim, out_dir)
             continue
         try:
-            _id = int(item.split("_")[1]) 
+            _id = int(dir_path.split("_")[0]) 
             img = Image.open(path)
             if img.size[0] > img.size[1]:
                 img = img.rotate(-90, expand=1)
