@@ -1,22 +1,16 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
-## dataset
-from tensorflow.keras.datasets import mnist
 
 ## for Model definition/training
 from tensorflow.keras.models import Model, load_model
-#from tensorflow.keras.layers import Input, Flatten, Dense, concatenate,  Dropout
-from tensorflow.keras.layers import * 
+#from tensorflow.keras.layers import * 
 from tensorflow.keras.optimizers import Adam, Adagrad, RMSprop
 from tensorflow.keras import regularizers
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping 
 from tensorflow.keras.backend import l2_normalize
-## required for semi-hard triplet loss:
-#from tensorflow.python.ops import tf
-#from tensorflow.python.ops import math_ops
 from tensorflow import math as math_ops
-#from tensorflow.python.framework import dtypes
 from tensorflow import dtypes
 
 ## for visualizing 
@@ -27,6 +21,7 @@ import os
 import sys 
 import traceback
 import argparse
+import pickle
 
 from sklearn.decomposition import PCA
 
@@ -35,17 +30,17 @@ from PIL import Image
 from inception import base_model
 from inception import inception_model 
 from inception import whole_model 
+from facenet_data_generator import get_generator
 
-def train_body(model,
+def train_body(model, data_generator,
                input_image_shape=(150, 200, 3), embedding_size=128,
-               batch_size=32, epochs=30, lr=0.0001, decay_rate=1.0,
-               decay_steps=100, x_train = None, y_train=None,
-               x_val=None, y_val=None, x_test=None, y_test=None):
+               steps_per_epoch=100, batch_size=32, epochs=30,
+               lr=0.0001, decay_rate=1.0, decay_steps=100, validation_steps=20):
 
     lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                       lr,
                       decay_steps=decay_steps,
-                      decay_rate=1,
+                      decay_rate=decay_rate,
                       staircase=False)
     # train session
     opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
@@ -56,14 +51,17 @@ def train_body(model,
     checkpoint_path = "facenet_v5_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
     checkpoint = ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True, period=1)
-    callbacks_list = [checkpoint]
+    early_stopping = EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
+    callbacks_list = [checkpoint, early_stopping]
 
     history = model.fit(
-            x=x_train,
-            y=y_train,
+            data_generator,
+            steps_per_epoch=steps_per_epoch,
             batch_size=batch_size,
             epochs=epochs,
-            validation_data=(x_val, y_val),
+            validation_data=data_generator,
+            validation_steps=validation_steps,
             callbacks=callbacks_list)
 
     model.save_weights(checkpoint_path.format(epoch=epochs))
@@ -72,53 +70,46 @@ def train_body(model,
     return model
 
 def create_model_body(base_model_path=None, base_weights_path=None, 
-                      model_path=None, weights_path=None, freeze_layers=10):
+                      model_path=None, weights_path=None, freeze_layers=0):
     if model_path:
         model = load_model(model_path)
         if weights_path:
             model.load_weights(weights_path)
-        if freeze_layers:
-            for layer in model.layers[:freeze_layers]:
-                layer.trainable = False
-    else: 
-        base_model = load_model(base_model_path)
-        base_model.load_weights(base_weights_path)
-        topless_base = Model(base_model.inputs, base_model.layers[-8].output)
-        if freeze:
-            for layer in topless_base.layers:
-                layer.trainable = False
-        body_output = inception_model(topless_base.output)
-        model = Model(topless_base.inputs, body_output)
+    else:
+        model = load_model(base_model_path)
+        if base_weights_path:
+            model.load_weights(base_weights_path)
+
+    if freeze_layers:
+        for layer in model.layers[:freeze_layers]:
+            layer.trainable = False
+
     model.save('saved_model/facenet_v5_model')
     model.summary()
     plot_model(model, to_file='inception_network.png', show_shapes=True, show_layer_names=True)
     return model
 
 def train_base(train_flag, model_path=None, weights_path=None,
+               data_generator=None,
                input_image_shape=(150, 200, 3), embedding_size=128,
-               batch_size=32, epochs=30, lr=0.0001, decay_rate=1.0,
-               decay_steps=100, x_train = None, y_train=None,
-               x_val=None, y_val=None, x_test=None, y_test=None):
+               steps_per_epoch=100, batch_size=32, epochs=30, lr=0.0001,
+               decay_rate=1.0, decay_steps=100, validation_steps=20):
     # Network training...
     if train_flag == True:
         if model_path:
             model = load_model(model_path)
         else:
-            #model = base_model(input_image_shape, embedding_size)
             model = whole_model(input_image_shape, embedding_size)
         plot_model(model, to_file='base_network.png', show_shapes=True, show_layer_names=True)
-        #input_images = Input(shape=input_image_shape, name='input_image') # input layer for images
-        #input_labels = Input(shape=(1,), name='input_label')    # input layer for labels
-        #embeddings = model([input_images])               # output of network -> embeddings
 
         model.summary()
         model.save('saved_model/facenet_base_model')
         plot_model(model, to_file='model.png', show_shapes=True, show_layer_names=True)
 
         lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
-                          0.0001,
+                          lr,
                           decay_steps=decay_steps,
-                          decay_rate=1,
+                          decay_rate=decay_rate,
                           staircase=False)
         # train session
         opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
@@ -131,16 +122,17 @@ def train_base(train_flag, model_path=None, weights_path=None,
         checkpoint_path = "facenet_base_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
         checkpoint = ModelCheckpoint(
                 checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True, period=1)
-        callbacks_list = [checkpoint]
+        early_stopping = EarlyStopping(
+            monitor='val_loss', min_delta=0, patience=15, verbose=1, mode='auto')
+        callbacks_list = [checkpoint, early_stopping]
 
-        print(x_train.shape)
-        print(x_val.shape)
         history = model.fit(
-            x=x_train,
-            y=y_train,
+            data_generator,
+            steps_per_epoch=steps_per_epoch,
             batch_size=batch_size,
             epochs=epochs,
-            validation_data=(x_val, y_val),
+            validation_data=data_generator,
+            validation_steps=validation_steps,
             callbacks=callbacks_list)
 
         model.save_weights(checkpoint_path.format(epoch=epochs))
@@ -213,8 +205,12 @@ def main(args):
     weights_path = os.path.expanduser(args.weights_path)
     base_model_path = os.path.expanduser(args.base_model_path)
     base_weights_path = os.path.expanduser(args.base_weights_path)
-    dir_path = os.path.expanduser(args.data_path)
+    data_path = os.path.expanduser(args.data_path)
+    test_data_path = os.path.expanduser(args.test_data_path)
+    wines_pkl_path = os.path.expanduser(args.label_pickle_path)
     epochs = args.epochs
+    steps_per_epoch = args.steps_per_epoch
+    validation_steps = args.validation_steps
     batch_size = args.batch_size
     learning_rate = args.learning_rate
     decay_rate = args.decay_rate
@@ -229,46 +225,39 @@ def main(args):
     if not is_gpu:
         tf.config.set_visible_devices([], 'GPU')
 
+    wines_dict = pickle.load(open(wines_pkl_path, 'rb'))
+
     # The data, split between train and test sets
-    x_test = np.load("%s/test/x.npy" % (dir_path))
-    y_test = np.load("%s/test/y.npy" % (dir_path))
+    x_test = np.load("%s/x.npy" % (test_data_path))
+    y_test = np.load("%s/y.npy" % (test_data_path))
     print(x_test.shape)
     print(y_test.shape)
-    x_train = np.load("%s/train/x.npy" % (dir_path))
-    y_train = np.load("%s/train/y.npy" % (dir_path))
-    x_val = np.load("%s/validation/x.npy" % (dir_path))
-    y_val = np.load("%s/validation/y.npy" % (dir_path))
-    n_train = len(x_train)
 
-    if not decay_steps:
-        steps_per_epoch = n_train // batch_size
-        decay_steps = steps_per_epoch * 100
+    decay_steps = steps_per_epoch * decay_steps 
 
-    print("x_val.shape", x_val.shape)
-    print("y_val.shape", y_val.shape)
-    print("x_tarin.shape", x_train.shape)
-    print("y_train.shape", y_train.shape)
     input_image_shape = (dim[0], dim[1], 3)
     if is_base_training or is_base_testing:
+        data_generator = get_generator(data_path, wines_dict, batch_size)(True)
         model = train_base(
                 is_base_training, model_path=base_model_path, weights_path=base_weights_path,
+                data_generator=data_generator,
                 input_image_shape=input_image_shape, embedding_size=embedding_size,
-                batch_size=batch_size, epochs=epochs, lr=learning_rate, decay_rate=decay_rate,
-                decay_steps=decay_steps, x_train=x_train, y_train=y_train,
-                x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test)
+                batch_size=batch_size, epochs=epochs,
+                lr=learning_rate, decay_rate=decay_rate, decay_steps=decay_steps,
+                steps_per_epoch=steps_per_epoch, validation_steps=validation_steps)
         # Test the network
         # creating an empty network
-        #before = base_model(input_image_shape, embedding_size=embedding_size)
         before = whole_model(input_image_shape, embedding_size=embedding_size)
     else:
         before = create_model_body(
                     base_model_path=base_model_path, base_weights_path=base_weights_path,
                     model_path=model_path, weights_path=weights_path, freeze_layers=freeze_layers)
-        model = train_body(before,
+        data_generator = get_generator(data_path, wines_dict, batch_size)(False)
+        model = train_body(before, data_generator,
                input_image_shape=input_image_shape, embedding_size=embedding_size,
-               batch_size=batch_size, epochs=epochs, lr=learning_rate, decay_rate=decay_rate,
-               decay_steps=decay_steps, x_train=x_train, y_train=y_train,
-               x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test)
+               batch_size=batch_size, epochs=epochs, lr=learning_rate,
+               decay_rate=decay_rate, decay_steps=decay_steps,
+               steps_per_epoch=steps_per_epoch, validation_steps=validation_steps)
     test_trained_model(before, model, x_test, y_test, epochs)
 
 if __name__ == "__main__":
@@ -303,12 +292,38 @@ if __name__ == "__main__":
         '-d',
         '--data_path',
         help='path to a directory containing numpy arrays (X and Y) of training dataset',
-        default='dataset13/small')
+        default='dataset13')
+
+    argparser.add_argument(
+        '-td',
+        '--test_data_path',
+        help='path to a directory containing numpy arrays (X and Y) of test dataset',
+        default='dataset13/small/test')
+
+    argparser.add_argument(
+        '-lp',
+        '--label_pickle_path',
+        help='path to a pickle file containing a dictionary of wines',
+        default='dataset13')
 
     argparser.add_argument(
         '-e',
         '--epochs',
         help='the number of epochs',
+        type=int,
+        default=30)
+
+    argparser.add_argument(
+        '-es',
+        '--steps_per_epoch',
+        help='the number of steps per epoch',
+        type=int,
+        default=100)
+
+    argparser.add_argument(
+        '-vs',
+        '--validation_steps',
+        help='validation steps',
         type=int,
         default=30)
 
@@ -320,7 +335,7 @@ if __name__ == "__main__":
         default=32)
 
     argparser.add_argument(
-        '-l',
+        '-lr',
         '--learning_rate',
         help='the learning rate',
         type=float,
@@ -338,7 +353,7 @@ if __name__ == "__main__":
         '--decay_steps',
         help='the decay steps',
         type=int,
-        default=0)
+        default=100)
 
     argparser.add_argument(
         '-iw',
