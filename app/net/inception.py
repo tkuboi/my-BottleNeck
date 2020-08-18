@@ -37,9 +37,9 @@ def inception_max_pooling2d(*args, **kwargs):
     return InceptionMaxPooling2D(*args, **kwargs)
 
 def inception_l2_normalize(**kwargs):
-    normalize_kwargs = {'axis': 1}
-    normalize_kwargs.update(kwargs)
-    return partial(l2_normalize, **normalize_kwargs) 
+    #normalize_kwargs = {'axis': 1}
+    #normalize_kwargs.update(kwargs)
+    return partial(l2_normalize, **kwargs) 
 
 def inception_concatenate(*args, **kwargs):
     return InceptionConcatenate(*args, **kwargs)
@@ -48,14 +48,14 @@ def base_layer1():
     return compose(
             inception_conv2d(64, kernel_size=(7, 7), strides=2, name='conv2d_base_0'),
             inception_max_pooling2d(pool_size=(3, 3), strides=2, name='max_pooling2d_base_0'),
-            inception_l2_normalize(name='base_l2_normalize_0'),
+            inception_l2_normalize(name='base_l2_normalize_0', axis=-1),
             )
 
 def base_layer2():
     return compose(
             inception_conv2d(64, kernel_size=(1, 1), strides=1, name='conv2d_base_1'),
             inception_conv2d(192, kernel_size=(3, 3), strides=1, name='conv2d_base_2'),
-            inception_l2_normalize(name='base_l2_normalize_1'),
+            inception_l2_normalize(name='base_l2_normalize_1', axis=-1),
             inception_max_pooling2d(pool_size=(3, 3), strides=2, name='max_pooling2d_base_1')
             )
 
@@ -85,7 +85,7 @@ def inception_pooling_unit(pool_size=(3, 3), strides=(1, 1),
 
 def inception_normalizing_unit(filters, kernel_size=(1, 1), strides=1):
     return compose(
-            inception_l2_normalize(),
+            inception_l2_normalize(axis=-1),
             inception_conv2d(filters, kernel_size=kernel_size, strides=strides)
             )
 
@@ -171,7 +171,7 @@ def inception_model(x, embedding_size=128):
     x = AveragePooling2D(pool_size=(1, 1), strides=1)(x)
     x = Flatten()(x)
     x = Dense(embedding_size, activation=None)(x)
-    x = inception_l2_normalize()(x)
+    x = inception_l2_normalize(axis=1)(x)
     return x
 
 def base_model(image_input_shape, embedding_size):
@@ -181,7 +181,7 @@ def base_model(image_input_shape, embedding_size):
     x = Conv2D(192, kernel_size=(19, 25), strides=25, activation='relu', name='conv2d_head_0')(x)
     x = Flatten()(x)
     x = Dense(embedding_size, activation=None)(x)
-    x = inception_l2_normalize()(x)
+    x = inception_l2_normalize(axis=1)(x)
 
     model = Model(inputs=input_image, outputs=x)
     return model
@@ -204,6 +204,6 @@ def whole_model(image_input_shape, embedding_size):
     x = Flatten()(x)
     x = Dropout(0.2)(x)
     x = Dense(embedding_size, activation=None)(x)
-    x = inception_l2_normalize()(x)
+    x = inception_l2_normalize(axis=1)(x)
     model = Model(inputs=input_image, outputs=x)
     return model
