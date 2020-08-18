@@ -63,7 +63,7 @@ def get_generator(in_dir, wines_dict, batch_size=32):
                     np.random.shuffle(wine_ids)
                 wine_id = wine_ids[wine_id_idx]
                 index = wine_idx_dict[wine_id]
-                for i in range(4):
+                for i in range(2):
                     if index >= len(arrays_dict[wine_id]):
                         wine_idx_dict[wine_id] = index = 0
                     if index == 0:
