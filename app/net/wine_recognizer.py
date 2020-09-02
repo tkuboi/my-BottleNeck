@@ -81,6 +81,8 @@ class WineRecognizer:
                 self.label_height = config['Facenet'].getint('image_height') 
             if 'k_neighbors' in config['Facenet']:
                 self.k_neighbors = config['Facenet'].getint('k_neighbors') 
+            if 'distance_metric' in config['Facenet']:
+                self.distance_metric = config['Facenet']['distance_metric'] 
 
     def init_app(self, app):
         self.app = app
@@ -132,7 +134,8 @@ class WineRecognizer:
         label_data /= 255.
         label_embedding = self.recognizer.predict(label_data)
         neighbors = get_neighbors(
-                self.wine_embeddings, self.wine_ids, label_embedding, self.k_neighbors)
+                self.wine_embeddings, self.wine_ids, label_embedding,
+                self.k_neighbors, self.distance_metric)
         #print(neighbors)
         results = map_wines(neighbors[0], self.wines_dict)
         return results
@@ -143,13 +146,25 @@ def get_dists(embeddings, test):
         dists[i] = np.linalg.norm(embedding - test)
     return dists
 
-def get_neighbors(embeddings, y_train, tests, k):
+def get_cos(embeddings, test):
+    angles = [None] * len(embeddings)
+    for i, embedding in enumerate(embeddings):
+        angles[i] = np.dot(embedding.T, test) / (np.linalg.norm(embedding) *  np.linalg.norm(test))
+    return angles 
+
+def get_neighbors(embeddings, y_train, tests, k, distance_metric):
     results = []
     for i, test in enumerate(tests):
-        dists = get_dists(embeddings, test)
-        zipped = zip(dists, y_train)
-        zipped = list(zipped)
-        neighbors = sorted(zipped, key=lambda x : x[0])
+        if distance_metric == 'angular':
+            angles = get_cos(embeddings, test)
+            zipped = zip(angles, y_train)
+            zipped = list(zipped)
+            neighbors = sorted(zipped, key=lambda x : x[0], reverse=True)
+        else:
+            dists = get_dists(embeddings, test)
+            zipped = zip(dists, y_train)
+            zipped = list(zipped)
+            neighbors = sorted(zipped, key=lambda x : x[0])
         results.append(k_nearest(neighbors, k))
     return results
 

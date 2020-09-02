@@ -35,7 +35,8 @@ from facenet_data_generator import get_generator
 def train_body(model, data_generator,
                input_image_shape=(150, 200, 3), embedding_size=128,
                steps_per_epoch=100, batch_size=32, epochs=30,
-               lr=0.0001, decay_rate=1.0, decay_steps=100, validation_steps=20):
+               lr=0.0001, decay_rate=1.0, decay_steps=100, validation_steps=20,
+               distance_metric='L2'):
 
     lr_schedule = tf.keras.optimizers.schedules.InverseTimeDecay(
                       lr,
@@ -46,9 +47,12 @@ def train_body(model, data_generator,
     opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
 
     # Network training...
-    model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
+    loss = tfa.losses.TripletSemiHardLoss(distance_metric=distance_metric)
+    model.compile(loss=loss, optimizer=opt)
+    #model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
 
-    checkpoint_path = "facenet_v5_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
+    checkpoint_path = "facenet_v5_%s_ep{epoch:02d}_BS%d/cp.ckpt" % (
+            distance_metric, batch_size)
     checkpoint = ModelCheckpoint(
             checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True, period=1)
     early_stopping = EarlyStopping(
@@ -93,7 +97,8 @@ def train_base(train_flag, model_path=None, weights_path=None,
                data_generator=None,
                input_image_shape=(150, 200, 3), embedding_size=128,
                steps_per_epoch=100, batch_size=32, epochs=30, lr=0.0001,
-               decay_rate=1.0, decay_steps=100, validation_steps=20):
+               decay_rate=1.0, decay_steps=100, validation_steps=20,
+               distance_metric='L2'):
     # Network training...
     if train_flag == True:
         if model_path:
@@ -114,12 +119,15 @@ def train_base(train_flag, model_path=None, weights_path=None,
         # train session
         opt = Adam(lr_schedule)  # choose optimiser. RMS is good too!
 
-        model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
+        loss = tfa.losses.TripletSemiHardLoss(distance_metric=distance_metric)
+        model.compile(loss=loss, optimizer=opt)
+        #model.compile(loss=tfa.losses.TripletSemiHardLoss(), optimizer=opt)
 
         if weights_path:
             model.load_weights(weights_path)
 
-        checkpoint_path = "facenet_base_ep{epoch:02d}_BS%d/cp.ckpt" % batch_size
+        checkpoint_path = "facenet_base_%s_ep{epoch:02d}_BS%d/cp.ckpt" % (
+                distance_metric, batch_size)
         checkpoint = ModelCheckpoint(
                 checkpoint_path, verbose=1, save_best_only=True, save_weights_only=True, period=1)
         early_stopping = EarlyStopping(
@@ -217,6 +225,7 @@ def main(args):
     decay_steps = args.decay_steps
     dim = (args.input_width, args.input_height)
     embedding_size = args.embedding_size
+    distance_metric = args.distance_metric
     freeze_layers = args.freeze_layers
     is_base_training = args.base_training_flag 
     is_base_testing = args.base_testing_flag 
@@ -244,7 +253,8 @@ def main(args):
                 input_image_shape=input_image_shape, embedding_size=embedding_size,
                 batch_size=batch_size, epochs=epochs,
                 lr=learning_rate, decay_rate=decay_rate, decay_steps=decay_steps,
-                steps_per_epoch=steps_per_epoch, validation_steps=validation_steps)
+                steps_per_epoch=steps_per_epoch, validation_steps=validation_steps,
+                distance_metric=distance_metric)
         # Test the network
         # creating an empty network
         before = whole_model(input_image_shape, embedding_size=embedding_size)
@@ -257,7 +267,8 @@ def main(args):
                input_image_shape=input_image_shape, embedding_size=embedding_size,
                batch_size=batch_size, epochs=epochs, lr=learning_rate,
                decay_rate=decay_rate, decay_steps=decay_steps,
-               steps_per_epoch=steps_per_epoch, validation_steps=validation_steps)
+               steps_per_epoch=steps_per_epoch, validation_steps=validation_steps,
+               distance_metric=distance_metric)
     test_trained_model(before, model, x_test, y_test, epochs)
 
 if __name__ == "__main__":
@@ -375,6 +386,12 @@ if __name__ == "__main__":
         type=int,
         help='embedding size',
         default=128)
+
+    argparser.add_argument(
+        '-dm',
+        '--distance_metric',
+        help='distance metric',
+        default='L2')
 
     argparser.add_argument(
         '-f',
